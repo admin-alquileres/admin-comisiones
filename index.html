@@ -1,0 +1,761 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comisiones de Venta — Eckerdt Inmobiliaria</title>
+<style>
+  :root{
+    --bg:#0f1115; --panel:#171a21; --panel2:#1d212a; --border:#2a2f3a;
+    --text:#e8eaed; --text2:#9aa1ad; --text3:#6b7280;
+    --accent:#3b82f6; --accent-bg:#1e3a5f;
+    --success:#22c55e; --success-bg:#14301f;
+    --warning:#f59e0b; --warning-bg:#3a2a0f;
+    --danger:#ef4444; --danger-bg:#3a1418;
+    --neutral-bg:#23272f;
+    --radius:8px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:14px; line-height:1.5;
+  }
+  button{
+    font-family:inherit; cursor:pointer; border-radius:var(--radius);
+    border:1px solid var(--border); background:var(--panel2); color:var(--text);
+    padding:8px 14px; font-size:13px; transition:background .15s,transform .1s;
+  }
+  button:hover{background:var(--panel);}
+  button:active{transform:scale(.98);}
+  button.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
+  button.primary:hover{background:#2563eb;}
+  input, select, textarea{
+    font-family:inherit; background:var(--panel2); border:1px solid var(--border);
+    color:var(--text); border-radius:var(--radius); padding:8px 10px; font-size:13px;
+    width:100%;
+  }
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  label{display:block; font-size:12px; color:var(--text2); margin-bottom:4px;}
+  .field{margin-bottom:14px;}
+  .row{display:flex; gap:12px;}
+  .row > .field{flex:1;}
+  a{color:var(--accent);}
+  .hidden{display:none !important;}
+
+  /* LOGIN */
+  #pantallaLogin{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+  }
+  .loginBox{
+    background:var(--panel); border:1px solid var(--border); border-radius:12px;
+    padding:32px; width:340px;
+  }
+  .loginBox h1{font-size:18px; font-weight:500; margin-bottom:4px;}
+  .loginBox p.sub{color:var(--text2); font-size:13px; margin-bottom:24px;}
+  .loginError{
+    background:var(--danger-bg); color:#fca5a5; border-radius:var(--radius);
+    padding:8px 12px; font-size:12px; margin-top:12px; display:none;
+  }
+
+  /* LAYOUT GENERAL */
+  #app{display:none;}
+  header{
+    border-bottom:1px solid var(--border); padding:14px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  header h1{font-size:16px; font-weight:500;}
+  header .userInfo{display:flex; align-items:center; gap:12px; font-size:13px; color:var(--text2);}
+  main{padding:24px; max-width:1100px; margin:0 auto;}
+
+  /* DASHBOARD CARDS */
+  .cards{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr));
+    gap:12px; margin-bottom:24px;
+  }
+  .card{background:var(--panel); border-radius:12px; padding:16px;}
+  .card .label{font-size:12px; color:var(--text2); margin-bottom:6px;}
+  .card .value{font-size:22px; font-weight:500;}
+  .card.acc .value{color:var(--accent);}
+  .card.ok .value{color:var(--success);}
+  .card.warn .value{color:var(--warning);}
+
+  /* FILTROS / TOOLBAR */
+  .toolbar{display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; align-items:center; justify-content:space-between;}
+  .filtros{display:flex; gap:8px; flex-wrap:wrap;}
+  .filtroBtn{font-size:12px; padding:6px 12px;}
+  .filtroBtn.activo{border-color:var(--accent); color:var(--accent); background:var(--accent-bg);}
+  .buscador{max-width:240px;}
+
+  /* TABLA */
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  thead th{
+    text-align:left; color:var(--text2); font-weight:400; padding:8px 10px;
+    border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap;
+  }
+  thead th:hover{color:var(--text);}
+  tbody tr{border-bottom:1px solid var(--border); cursor:pointer;}
+  tbody tr:hover{background:var(--panel2);}
+  tbody td{padding:9px 10px; white-space:nowrap;}
+  .num{text-align:right;}
+  .badge{
+    display:inline-block; font-size:11px; padding:3px 10px; border-radius:var(--radius);
+    white-space:nowrap;
+  }
+  .badge.negociacion{background:var(--neutral-bg); color:var(--text2); border:1px dashed var(--border);}
+  .badge.pendiente{background:var(--warning-bg); color:var(--warning);}
+  .badge.parcial{background:var(--accent-bg); color:var(--accent);}
+  .badge.cobrado{background:var(--success-bg); color:var(--success);}
+  .emptyState{text-align:center; padding:48px 0; color:var(--text2);}
+
+  /* MODAL */
+  .overlay{
+    position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,.6);
+    display:flex; align-items:flex-start; justify-content:center; padding:40px 16px;
+    overflow-y:auto; z-index:100;
+  }
+  .modal{
+    background:var(--panel); border-radius:12px; border:1px solid var(--border);
+    width:100%; max-width:560px; padding:24px;
+  }
+  .modal h2{font-size:16px; font-weight:500; margin-bottom:20px;}
+  .modal .closeBtn{float:right; font-size:13px;}
+  .seccionTitulo{
+    font-size:12px; color:var(--text2); text-transform:uppercase; letter-spacing:.04em;
+    margin:20px 0 10px; padding-top:14px; border-top:1px solid var(--border);
+  }
+  .seccionTitulo:first-of-type{border-top:none; margin-top:0; padding-top:0;}
+  .modalAcciones{display:flex; justify-content:flex-end; gap:8px; margin-top:24px;}
+  .repartoTipo{display:flex; gap:6px; margin-bottom:12px;}
+  .repartoTipo button{flex:1; font-size:12px; padding:7px;}
+  .repartoTipo button.activo{border-color:var(--accent); color:var(--accent); background:var(--accent-bg);}
+  .cobroBox{
+    background:var(--panel2); border-radius:var(--radius); padding:14px; margin-bottom:12px;
+  }
+  .cobroBox .titulo{font-size:13px; font-weight:500; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;}
+</style>
+</head>
+<body>
+
+<!-- ===================== LOGIN ===================== -->
+<div id="pantallaLogin">
+  <div class="loginBox">
+    <h1>Comisiones de venta</h1>
+    <p class="sub">Eckerdt Negocios Inmobiliarios</p>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="gaston@ie.com" autocomplete="username">
+    </div>
+    <div class="field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="primary" id="btnLogin" style="width:100%;">Ingresar</button>
+    <div class="loginError" id="loginError"></div>
+  </div>
+</div>
+
+<!-- ===================== APP ===================== -->
+<div id="app">
+  <header>
+    <h1>Comisiones de venta</h1>
+    <div class="userInfo">
+      <span id="userEmail"></span>
+      <button id="btnLogout">Salir</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="cards">
+      <div class="card"><div class="label">Comisiones generadas</div><div class="value" id="cardGenerado">USD 0</div></div>
+      <div class="card acc"><div class="label">Te corresponde a vos</div><div class="value" id="cardMiParte">USD 0</div></div>
+      <div class="card ok"><div class="label">Cobrado</div><div class="value" id="cardCobrado">USD 0</div></div>
+      <div class="card warn"><div class="label">Pendiente de cobro</div><div class="value" id="cardPendiente">USD 0</div></div>
+    </div>
+
+    <div class="toolbar">
+      <div class="filtros" id="filtrosEstado">
+        <button class="filtroBtn activo" data-filtro="todas">Todas</button>
+        <button class="filtroBtn" data-filtro="pendiente">Pendientes</button>
+        <button class="filtroBtn" data-filtro="parcial">Cobro parcial</button>
+        <button class="filtroBtn" data-filtro="cobrado">Cobradas</button>
+        <button class="filtroBtn" data-filtro="negociacion">En negociación</button>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <input class="buscador" type="text" id="buscador" placeholder="Buscar por nombre o propiedad...">
+        <button class="primary" id="btnNuevaOperacion">+ Nueva operación</button>
+      </div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="fecha">Fecha</th>
+          <th data-sort="propiedad">Prop</th>
+          <th data-sort="vendedor">Vendedor → Comprador</th>
+          <th data-sort="precioVenta" class="num">Precio</th>
+          <th data-sort="comisionTotal" class="num">Com. USD</th>
+          <th data-sort="miParte" class="num">Mi parte</th>
+          <th>Estado</th>
+        </tr>
+      </thead>
+      <tbody id="tablaBody"></tbody>
+    </table>
+    <div class="emptyState hidden" id="emptyState">No hay operaciones para mostrar.</div>
+  </main>
+</div>
+
+<!-- ===================== MODAL OPERACIÓN ===================== -->
+<div class="overlay hidden" id="overlayOperacion">
+  <div class="modal">
+    <span class="closeBtn" data-action="cerrar-modal">✕ cerrar</span>
+    <h2 id="modalOperacionTitulo">Nueva operación</h2>
+
+    <div class="seccionTitulo">Datos generales</div>
+    <div class="row">
+      <div class="field">
+        <label>Fecha de firma</label>
+        <input type="date" id="opFecha">
+      </div>
+      <div class="field">
+        <label>Tipo de propiedad</label>
+        <select id="opPropiedad">
+          <option>Casa</option>
+          <option>Dpto</option>
+          <option>Terrenos</option>
+          <option>Campo</option>
+          <option>Granja</option>
+          <option>Local comercial</option>
+          <option>Otro</option>
+        </select>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Vendedor</label>
+        <input type="text" id="opVendedor" placeholder="Nombre del vendedor">
+      </div>
+      <div class="field">
+        <label>Comprador</label>
+        <input type="text" id="opComprador" placeholder="Nombre del comprador">
+      </div>
+    </div>
+    <div class="field">
+      <label>Precio de venta (USD)</label>
+      <input type="number" id="opPrecio" placeholder="0">
+    </div>
+    <div class="field">
+      <label>Estado de la operación</label>
+      <select id="opEstadoNegociacion">
+        <option value="firmada">Firmada / concretada</option>
+        <option value="negociacion">En negociación avanzada (no firmada)</option>
+      </select>
+    </div>
+
+    <div class="seccionTitulo">Comisiones</div>
+    <div class="row">
+      <div class="field">
+        <label>% comisión vendedor (CV)</label>
+        <input type="number" step="0.1" id="opCV" placeholder="3">
+      </div>
+      <div class="field">
+        <label>% comisión comprador (CC)</label>
+        <input type="number" step="0.1" id="opCC" placeholder="3">
+      </div>
+    </div>
+    <div style="font-size:12px; color:var(--text2); margin-bottom:14px;">
+      Comisión total estimada: <strong id="opComisionPreview" style="color:var(--text);">USD 0</strong>
+    </div>
+
+    <div class="seccionTitulo">Reparto Gastón / Matías</div>
+    <div class="repartoTipo">
+      <button class="activo" data-reparto="50-50">50 / 50</button>
+      <button data-reparto="porcentaje">% personalizado</button>
+      <button data-reparto="fijo">Monto fijo</button>
+    </div>
+    <div class="row" id="repartoCampos">
+      <div class="field">
+        <label>Gastón</label>
+        <input type="text" id="repartoGaston" value="50%" disabled>
+      </div>
+      <div class="field">
+        <label>Matías</label>
+        <input type="text" id="repartoMatias" value="50%" disabled>
+      </div>
+    </div>
+
+    <div class="seccionTitulo">Notas</div>
+    <div class="field">
+      <textarea id="opNotas" rows="2" placeholder="Observaciones, acuerdos verbales, etc."></textarea>
+    </div>
+
+    <div class="modalAcciones">
+      <button data-action="cerrar-modal">Cancelar</button>
+      <button class="primary" id="btnGuardarOperacion">Guardar operación</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== MODAL DETALLE / COBRO ===================== -->
+<div class="overlay hidden" id="overlayDetalle">
+  <div class="modal">
+    <span class="closeBtn" data-action="cerrar-detalle">✕ cerrar</span>
+    <h2 id="detalleTitulo">Operación</h2>
+    <div id="detalleResumen" style="font-size:13px; color:var(--text2); margin-bottom:18px;"></div>
+
+    <div class="cobroBox">
+      <div class="titulo">
+        <span>Comisión vendedor (CV)</span>
+        <span class="badge" id="badgeCV"></span>
+      </div>
+      <div id="cvContenido"></div>
+    </div>
+
+    <div class="cobroBox">
+      <div class="titulo">
+        <span>Comisión comprador (CC)</span>
+        <span class="badge" id="badgeCC"></span>
+      </div>
+      <div id="ccContenido"></div>
+    </div>
+
+    <div class="modalAcciones">
+      <button data-action="editar-operacion">Editar datos</button>
+      <button data-action="cerrar-detalle">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, collection, getDocs, addDoc, updateDoc, doc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const FC = {
+  apiKey: "AIzaSyDnsmUuwjiT2Gzq3y9NAvxaeFEmn3LTMw4",
+  authDomain: "alquileres-eckerdt.firebaseapp.com",
+  projectId: "alquileres-eckerdt",
+  storageBucket: "alquileres-eckerdt.firebasestorage.app",
+  messagingSenderId: "368148074641",
+  appId: "1:368148074641:web:4369af59f3e7b2f3daef30",
+  databaseURL: "https://alquileres-eckerdt-default-rtdb.firebaseio.com"
+};
+
+const fireApp = initializeApp(FC);
+const auth = getAuth(fireApp);
+const db = getFirestore(fireApp);
+
+const COLECCION = "operacionesVenta";
+
+let S = window.S = {
+  operaciones: [],
+  filtroEstado: "todas",
+  busqueda: "",
+  orden: { campo: "fecha", asc: false },
+  modalOperacionId: null,
+  repartoTipoActual: "50-50",
+  detalleOperacionId: null
+};
+
+// ---------- AUTH ----------
+document.getElementById("btnLogin").addEventListener("click", login);
+document.getElementById("loginPass").addEventListener("keydown", e => { if (e.key === "Enter") login(); });
+
+async function login() {
+  const email = document.getElementById("loginEmail").value.trim();
+  const pass = document.getElementById("loginPass").value;
+  const errEl = document.getElementById("loginError");
+  errEl.style.display = "none";
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch (e) {
+    errEl.textContent = "No se pudo ingresar. Revisá el email y la contraseña.";
+    errEl.style.display = "block";
+  }
+}
+
+document.getElementById("btnLogout").addEventListener("click", () => signOut(auth));
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    document.getElementById("pantallaLogin").style.display = "none";
+    document.getElementById("app").style.display = "block";
+    document.getElementById("userEmail").textContent = user.email;
+    cargarOperaciones();
+  } else {
+    document.getElementById("pantallaLogin").style.display = "flex";
+    document.getElementById("app").style.display = "none";
+  }
+});
+
+// ---------- CARGA DE DATOS ----------
+async function cargarOperaciones() {
+  const snap = await getDocs(collection(db, COLECCION));
+  S.operaciones = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  render();
+}
+
+// ---------- HELPERS DE CÁLCULO ----------
+function comisionUSD(op, tipo) {
+  const pct = tipo === "cv" ? (op.cv?.porcentaje || 0) : (op.cc?.porcentaje || 0);
+  return (op.precioVenta || 0) * (pct / 100);
+}
+function comisionTotalUSD(op) {
+  return comisionUSD(op, "cv") + comisionUSD(op, "cc");
+}
+function miParteUSD(op) {
+  const total = comisionTotalUSD(op);
+  const reparto = op.reparto || { tipo: "50-50" };
+  if (reparto.tipo === "50-50") return total * 0.5;
+  if (reparto.tipo === "porcentaje") return total * ((reparto.gastonPct || 50) / 100);
+  if (reparto.tipo === "fijo") return reparto.gastonMonto || 0;
+  return total * 0.5;
+}
+function estadoOperacion(op) {
+  if (op.estadoNegociacion === "negociacion") return "negociacion";
+  const cvCobrado = !!op.cv?.cobrado;
+  const ccCobrado = !!op.cc?.cobrado;
+  if (cvCobrado && ccCobrado) return "cobrado";
+  if (cvCobrado || ccCobrado) return "parcial";
+  return "pendiente";
+}
+function etiquetaEstado(estado) {
+  return {
+    negociacion: "En negociación",
+    pendiente: "Pendiente",
+    parcial: "Cobro parcial",
+    cobrado: "Cobrado"
+  }[estado] || estado;
+}
+function fmtUSD(n) {
+  return "USD " + Math.round(n || 0).toLocaleString("es-AR");
+}
+function fmtFecha(iso) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y.slice(2)}`;
+}
+
+// ---------- RENDER DASHBOARD ----------
+function renderDashboard(lista) {
+  const generado = lista.reduce((a, op) => a + comisionTotalUSD(op), 0);
+  const miParte = lista.reduce((a, op) => a + miParteUSD(op), 0);
+  let cobrado = 0, pendiente = 0;
+  lista.forEach(op => {
+    const cv = comisionUSD(op, "cv"), cc = comisionUSD(op, "cc");
+    if (op.cv?.cobrado) cobrado += cv * (miPartePctDe(op)); else pendiente += cv * (miPartePctDe(op));
+    if (op.cc?.cobrado) cobrado += cc * (miPartePctDe(op)); else pendiente += cc * (miPartePctDe(op));
+  });
+  document.getElementById("cardGenerado").textContent = fmtUSD(generado);
+  document.getElementById("cardMiParte").textContent = fmtUSD(miParte);
+  document.getElementById("cardCobrado").textContent = fmtUSD(cobrado);
+  document.getElementById("cardPendiente").textContent = fmtUSD(pendiente);
+}
+function miPartePctDe(op) {
+  const total = comisionTotalUSD(op);
+  if (!total) return 0.5;
+  return miParteUSD(op) / total;
+}
+
+// ---------- FILTROS ----------
+document.querySelectorAll(".filtroBtn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filtroBtn").forEach(b => b.classList.remove("activo"));
+    btn.classList.add("activo");
+    S.filtroEstado = btn.dataset.filtro;
+    render();
+  });
+});
+document.getElementById("buscador").addEventListener("input", e => {
+  S.busqueda = e.target.value.toLowerCase();
+  render();
+});
+document.querySelectorAll("thead th[data-sort]").forEach(th => {
+  th.addEventListener("click", () => {
+    const campo = th.dataset.sort;
+    if (S.orden.campo === campo) S.orden.asc = !S.orden.asc;
+    else { S.orden.campo = campo; S.orden.asc = true; }
+    render();
+  });
+});
+
+function listaFiltrada() {
+  let lista = S.operaciones.map(op => ({
+    ...op,
+    comisionTotal: comisionTotalUSD(op),
+    miParte: miParteUSD(op),
+    estadoCalc: estadoOperacion(op)
+  }));
+  if (S.filtroEstado !== "todas") {
+    lista = lista.filter(op => op.estadoCalc === S.filtroEstado);
+  }
+  if (S.busqueda) {
+    lista = lista.filter(op =>
+      (op.vendedor || "").toLowerCase().includes(S.busqueda) ||
+      (op.comprador || "").toLowerCase().includes(S.busqueda) ||
+      (op.propiedad || "").toLowerCase().includes(S.busqueda)
+    );
+  }
+  lista.sort((a, b) => {
+    let va = a[S.orden.campo], vb = b[S.orden.campo];
+    if (va === undefined) va = "";
+    if (vb === undefined) vb = "";
+    if (va < vb) return S.orden.asc ? -1 : 1;
+    if (va > vb) return S.orden.asc ? 1 : -1;
+    return 0;
+  });
+  return lista;
+}
+
+// ---------- RENDER TABLA ----------
+function render() {
+  const lista = listaFiltrada();
+  renderDashboard(S.operaciones);
+  const tbody = document.getElementById("tablaBody");
+  const empty = document.getElementById("emptyState");
+  if (lista.length === 0) {
+    tbody.innerHTML = "";
+    empty.classList.remove("hidden");
+    return;
+  }
+  empty.classList.add("hidden");
+  tbody.innerHTML = lista.map(op => `
+    <tr data-action="abrir-detalle" data-id="${op.id}">
+      <td>${fmtFecha(op.fecha)}</td>
+      <td>${op.propiedad || ""}</td>
+      <td style="color:var(--text2);">${op.vendedor || ""} → ${op.comprador || ""}</td>
+      <td class="num">${Math.round(op.precioVenta || 0).toLocaleString("es-AR")}</td>
+      <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
+      <td class="num">${Math.round(op.miParte).toLocaleString("es-AR")}</td>
+      <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span></td>
+    </tr>
+  `).join("");
+}
+
+// ---------- DELEGACIÓN DE CLICKS ----------
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-action]");
+  if (!el) return;
+  const accion = el.dataset.action;
+  if (accion === "abrir-detalle") abrirDetalle(el.dataset.id);
+  if (accion === "cerrar-modal") cerrarModalOperacion();
+  if (accion === "cerrar-detalle") cerrarDetalle();
+  if (accion === "editar-operacion") editarDesdeDetalle();
+});
+
+// ---------- MODAL OPERACIÓN (ALTA / EDICIÓN) ----------
+document.getElementById("btnNuevaOperacion").addEventListener("click", () => abrirModalOperacion(null));
+
+function abrirModalOperacion(id) {
+  S.modalOperacionId = id;
+  const op = id ? S.operaciones.find(o => o.id === id) : null;
+  document.getElementById("modalOperacionTitulo").textContent = op ? "Editar operación" : "Nueva operación";
+  document.getElementById("opFecha").value = op?.fecha || "";
+  document.getElementById("opPropiedad").value = op?.propiedad || "Casa";
+  document.getElementById("opVendedor").value = op?.vendedor || "";
+  document.getElementById("opComprador").value = op?.comprador || "";
+  document.getElementById("opPrecio").value = op?.precioVenta || "";
+  document.getElementById("opEstadoNegociacion").value = op?.estadoNegociacion || "firmada";
+  document.getElementById("opCV").value = op?.cv?.porcentaje ?? 3;
+  document.getElementById("opCC").value = op?.cc?.porcentaje ?? 3;
+  document.getElementById("opNotas").value = op?.notas || "";
+  setRepartoTipo(op?.reparto?.tipo || "50-50", op?.reparto);
+  actualizarPreviewComision();
+  document.getElementById("overlayOperacion").classList.remove("hidden");
+}
+function cerrarModalOperacion() {
+  document.getElementById("overlayOperacion").classList.add("hidden");
+}
+["opPrecio", "opCV", "opCC"].forEach(id =>
+  document.getElementById(id).addEventListener("input", actualizarPreviewComision)
+);
+function actualizarPreviewComision() {
+  const precio = parseFloat(document.getElementById("opPrecio").value) || 0;
+  const cv = parseFloat(document.getElementById("opCV").value) || 0;
+  const cc = parseFloat(document.getElementById("opCC").value) || 0;
+  const total = precio * (cv + cc) / 100;
+  document.getElementById("opComisionPreview").textContent = fmtUSD(total);
+}
+
+document.querySelectorAll("[data-reparto]").forEach(btn => {
+  btn.addEventListener("click", () => setRepartoTipo(btn.dataset.reparto));
+});
+function setRepartoTipo(tipo, repartoExistente) {
+  S.repartoTipoActual = tipo;
+  document.querySelectorAll("[data-reparto]").forEach(b =>
+    b.classList.toggle("activo", b.dataset.reparto === tipo)
+  );
+  const gEl = document.getElementById("repartoGaston");
+  const mEl = document.getElementById("repartoMatias");
+  if (tipo === "50-50") {
+    gEl.disabled = true; mEl.disabled = true;
+    gEl.value = "50%"; mEl.value = "50%";
+  } else if (tipo === "porcentaje") {
+    gEl.disabled = false; mEl.disabled = true;
+    gEl.value = repartoExistente?.gastonPct ?? 50;
+    mEl.value = (100 - (repartoExistente?.gastonPct ?? 50)) + "% (resto)";
+  } else if (tipo === "fijo") {
+    gEl.disabled = false; mEl.disabled = false;
+    gEl.value = repartoExistente?.gastonMonto ?? "";
+    mEl.value = repartoExistente?.matiasMonto ?? "";
+  }
+}
+
+document.getElementById("btnGuardarOperacion").addEventListener("click", guardarOperacion);
+async function guardarOperacion() {
+  const precio = parseFloat(document.getElementById("opPrecio").value) || 0;
+  const cvPct = parseFloat(document.getElementById("opCV").value) || 0;
+  const ccPct = parseFloat(document.getElementById("opCC").value) || 0;
+  const tipo = S.repartoTipoActual;
+
+  let reparto = { tipo: "50-50" };
+  if (tipo === "porcentaje") {
+    reparto = { tipo, gastonPct: parseFloat(document.getElementById("repartoGaston").value) || 50 };
+  } else if (tipo === "fijo") {
+    reparto = {
+      tipo,
+      gastonMonto: parseFloat(document.getElementById("repartoGaston").value) || 0,
+      matiasMonto: parseFloat(document.getElementById("repartoMatias").value) || 0
+    };
+  }
+
+  const existente = S.modalOperacionId ? S.operaciones.find(o => o.id === S.modalOperacionId) : null;
+
+  const datos = {
+    fecha: document.getElementById("opFecha").value,
+    propiedad: document.getElementById("opPropiedad").value,
+    vendedor: document.getElementById("opVendedor").value.trim(),
+    comprador: document.getElementById("opComprador").value.trim(),
+    precioVenta: precio,
+    estadoNegociacion: document.getElementById("opEstadoNegociacion").value,
+    notas: document.getElementById("opNotas").value.trim(),
+    reparto,
+    cv: { porcentaje: cvPct, cobrado: existente?.cv?.cobrado || false, ...(existente?.cv?.cobrado ? existenteCobroCV(existente) : {}) },
+    cc: { porcentaje: ccPct, cobrado: existente?.cc?.cobrado || false, ...(existente?.cc?.cobrado ? existenteCobroCC(existente) : {}) }
+  };
+
+  if (S.modalOperacionId) {
+    await updateDoc(doc(db, COLECCION, S.modalOperacionId), datos);
+  } else {
+    await addDoc(collection(db, COLECCION), datos);
+  }
+  cerrarModalOperacion();
+  await cargarOperaciones();
+}
+function existenteCobroCV(op) {
+  const { porcentaje, cobrado, ...resto } = op.cv;
+  return resto;
+}
+function existenteCobroCC(op) {
+  const { porcentaje, cobrado, ...resto } = op.cc;
+  return resto;
+}
+
+// ---------- MODAL DETALLE / COBRO ----------
+function abrirDetalle(id) {
+  S.detalleOperacionId = id;
+  const op = S.operaciones.find(o => o.id === id);
+  if (!op) return;
+  document.getElementById("detalleTitulo").textContent = `${op.propiedad} — ${op.vendedor} → ${op.comprador}`;
+  document.getElementById("detalleResumen").textContent =
+    `${fmtFecha(op.fecha)} · Precio USD ${Math.round(op.precioVenta || 0).toLocaleString("es-AR")} · Mi parte ${fmtUSD(miParteUSD(op))}`;
+
+  renderBloqueComision("cv", op);
+  renderBloqueComision("cc", op);
+
+  document.getElementById("overlayDetalle").classList.remove("hidden");
+}
+function cerrarDetalle() {
+  document.getElementById("overlayDetalle").classList.add("hidden");
+}
+function editarDesdeDetalle() {
+  const id = S.detalleOperacionId;
+  cerrarDetalle();
+  abrirModalOperacion(id);
+}
+
+function renderBloqueComision(tipo, op) {
+  const datos = op[tipo] || {};
+  const monto = comisionUSD(op, tipo);
+  const badge = document.getElementById(tipo === "cv" ? "badgeCV" : "badgeCC");
+  const cont = document.getElementById(tipo === "cv" ? "cvContenido" : "ccContenido");
+
+  if (datos.cobrado) {
+    badge.textContent = "Cobrado";
+    badge.className = "badge cobrado";
+    cont.innerHTML = `
+      <div style="font-size:12px; color:var(--text2); line-height:1.7;">
+        Monto: ${fmtUSD(monto)}<br>
+        Fecha de cobro: ${fmtFecha(datos.fechaCobro) || "—"}<br>
+        Moneda: ${datos.moneda === "ARS" ? "Pesos (ARS)" : "Dólares (USD)"}
+        ${datos.moneda === "ARS" ? `<br>Cotización blue usada: $${datos.cotizacionBlue || "—"}<br>Monto cobrado: $${Math.round(datos.montoARS || 0).toLocaleString("es-AR")} ARS` : ""}
+      </div>
+      <button style="margin-top:10px; font-size:12px;" data-action="marcar-pendiente" data-tipo="${tipo}">Marcar como no cobrado</button>
+    `;
+  } else {
+    badge.textContent = "Pendiente";
+    badge.className = "badge pendiente";
+    cont.innerHTML = `
+      <div style="font-size:12px; color:var(--text2); margin-bottom:10px;">Monto a cobrar: ${fmtUSD(monto)}</div>
+      <div class="row">
+        <div class="field">
+          <label>Fecha de cobro</label>
+          <input type="date" id="cobroFecha_${tipo}">
+        </div>
+        <div class="field">
+          <label>Moneda</label>
+          <select id="cobroMoneda_${tipo}">
+            <option value="USD">Dólares (USD)</option>
+            <option value="ARS">Pesos (ARS)</option>
+          </select>
+        </div>
+      </div>
+      <div class="field cotizacionField_${tipo} hidden">
+        <label>Cotización blue del día (dolarhoy.com)</label>
+        <input type="number" id="cobroCotizacion_${tipo}" placeholder="Ej: 1850">
+      </div>
+      <button class="primary" data-action="confirmar-cobro" data-tipo="${tipo}">Marcar como cobrado</button>
+    `;
+    const monedaSel = document.getElementById(`cobroMoneda_${tipo}`);
+    monedaSel.addEventListener("change", () => {
+      cont.querySelector(`.cotizacionField_${tipo}`).classList.toggle("hidden", monedaSel.value !== "ARS");
+    });
+  }
+}
+
+document.addEventListener("click", async e => {
+  const btn = e.target.closest("[data-action='confirmar-cobro']");
+  if (btn) {
+    const tipo = btn.dataset.tipo;
+    const fecha = document.getElementById(`cobroFecha_${tipo}`).value;
+    const moneda = document.getElementById(`cobroMoneda_${tipo}`).value;
+    const cotizacion = moneda === "ARS" ? (parseFloat(document.getElementById(`cobroCotizacion_${tipo}`).value) || 0) : null;
+    const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
+    const monto = comisionUSD(op, tipo);
+    const datosCobro = {
+      ...op[tipo],
+      cobrado: true,
+      fechaCobro: fecha,
+      moneda,
+      ...(moneda === "ARS" ? { cotizacionBlue: cotizacion, montoARS: monto * cotizacion } : {})
+    };
+    await updateDoc(doc(db, COLECCION, op.id), { [tipo]: datosCobro });
+    await cargarOperaciones();
+    abrirDetalle(op.id);
+  }
+  const btnNo = e.target.closest("[data-action='marcar-pendiente']");
+  if (btnNo) {
+    const tipo = btnNo.dataset.tipo;
+    const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
+    await updateDoc(doc(db, COLECCION, op.id), { [tipo]: { porcentaje: op[tipo].porcentaje, cobrado: false } });
+    await cargarOperaciones();
+    abrirDetalle(op.id);
+  }
+});
+</script>
+</body>
+</html>
