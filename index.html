@@ -460,6 +460,17 @@ function miPartePctDe(op) {
   if (!total) return 0.5;
   return miParteUSD(op) / total;
 }
+function miParteDesglose(op) {
+  // Devuelve { cobrado, pendiente } de "mi parte", según qué porción (CV/CC)
+  // ya está cobrada. Útil cuando una operación está en cobro parcial.
+  const pct = miPartePctDe(op);
+  const cv = comisionUSD(op, "cv");
+  const cc = comisionUSD(op, "cc");
+  let cobrado = 0, pendiente = 0;
+  if (op.cv?.cobrado) cobrado += cv * pct; else pendiente += cv * pct;
+  if (op.cc?.cobrado) cobrado += cc * pct; else pendiente += cc * pct;
+  return { cobrado, pendiente };
+}
 
 // ---------- FILTROS ----------
 document.querySelectorAll(".filtroBtn").forEach(btn => {
@@ -512,6 +523,19 @@ function listaFiltrada() {
 }
 
 // ---------- RENDER TABLA ----------
+function celdaMiParte(op) {
+  if (op.estadoCalc !== "parcial") {
+    return Math.round(op.miParte).toLocaleString("es-AR");
+  }
+  const { cobrado, pendiente } = miParteDesglose(op);
+  return `
+    <div style="line-height:1.4;">
+      <div style="color:var(--success);">${Math.round(cobrado).toLocaleString("es-AR")} cobrado</div>
+      <div style="color:var(--warning); font-size:11px;">${Math.round(pendiente).toLocaleString("es-AR")} pendiente</div>
+    </div>
+  `;
+}
+
 function render() {
   const lista = listaFiltrada();
   renderDashboard(S.operaciones);
@@ -530,7 +554,7 @@ function render() {
       <td style="color:var(--text2);">${op.vendedor || ""} → ${op.comprador || ""}</td>
       <td class="num">${Math.round(op.precioVenta || 0).toLocaleString("es-AR")}</td>
       <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
-      <td class="num">${Math.round(op.miParte).toLocaleString("es-AR")}</td>
+      <td class="num">${celdaMiParte(op)}</td>
       <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span></td>
     </tr>
   `).join("");
