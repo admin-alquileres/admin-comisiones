@@ -530,20 +530,22 @@ function miPartePctDe(op) {
 }
 function miParteDesglose(op) {
   // Lógica idéntica al Excel:
-  // - cobrado: usa gastonMonto real si está guardado, sino 50% de la comisión cobrada
-  // - pendiente: siempre 50% de la comisión que falta cobrar (CV o CC)
+  // - cobrado: usa gastonMonto real si está guardado, sino 50%
+  // - pendiente: usa gastonMonto real si está guardado, sino 50%
   const cv = comisionUSD(op, "cv");
   const cc = comisionUSD(op, "cc");
   let cobrado = 0, pendiente = 0;
   if (op.cv?.cobrado) {
     cobrado += op.cv.gastonMonto !== undefined ? op.cv.gastonMonto : cv * 0.5;
   } else {
-    if (op.estadoNegociacion !== "negociacion") pendiente += cv * 0.5;
+    if (op.estadoNegociacion !== "negociacion")
+      pendiente += op.cv?.gastonMonto !== undefined ? op.cv.gastonMonto : cv * 0.5;
   }
   if (op.cc?.cobrado) {
     cobrado += op.cc.gastonMonto !== undefined ? op.cc.gastonMonto : cc * 0.5;
   } else {
-    if (op.estadoNegociacion !== "negociacion") pendiente += cc * 0.5;
+    if (op.estadoNegociacion !== "negociacion")
+      pendiente += op.cc?.gastonMonto !== undefined ? op.cc.gastonMonto : cc * 0.5;
   }
   return { cobrado, pendiente };
 }
