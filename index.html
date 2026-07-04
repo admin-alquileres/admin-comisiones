@@ -5,15 +5,37 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Comisiones de Venta — Eckerdt Inmobiliaria</title>
 <style>
+  /* ===== TEMA OSCURO (default) ===== */
   :root{
-    --bg:#0f1115; --panel:#171a21; --panel2:#1d212a; --border:#2a2f3a;
-    --text:#e8eaed; --text2:#9aa1ad; --text3:#6b7280;
-    --accent:#3b82f6; --accent-bg:#1e3a5f;
-    --success:#22c55e; --success-bg:#14301f;
-    --warning:#f59e0b; --warning-bg:#3a2a0f;
+    --bg:#0e1419; --panel:#141c22; --panel2:#1a242c; --border:#243040;
+    --text:#e8edf2; --text2:#8fa3b0; --text3:#56707d;
+    /* Colores Eckerdt */
+    --accent:#2A8A96; --accent-bg:#0e2f35; --accent-hover:#1f7580;
+    --naranja:#F5A623; --naranja-bg:#3a2a08;
+    --celeste:#4BBFD4; --celeste-bg:#0d2f38;
+    --teal:#1e7a85; --teal-bg:#0a2428;
+    --success:#22c55e; --success-bg:#0f2a1a;
+    --warning:#F5A623; --warning-bg:#3a2a08;
     --danger:#ef4444; --danger-bg:#3a1418;
-    --neutral-bg:#23272f;
+    --neutral-bg:#1a242c;
     --radius:8px;
+    --vendedor-color:#4BBFD4; --vendedor-bg:#0d2f38;
+    --comprador-color:#F5A623; --comprador-bg:#3a2a08;
+  }
+  /* ===== TEMA CLARO ===== */
+  body.tema-claro{
+    --bg:#f0f4f7; --panel:#ffffff; --panel2:#e8f0f4; --border:#c8d8e0;
+    --text:#1a2830; --text2:#4a6070; --text3:#7a9aaa;
+    --accent:#2A8A96; --accent-bg:#d0eef2; --accent-hover:#1f7580;
+    --naranja:#d4880a; --naranja-bg:#fdefd0;
+    --celeste:#2a9ab0; --celeste-bg:#d0eef4;
+    --teal:#1e7a85; --teal-bg:#c8e8ec;
+    --success:#16a34a; --success-bg:#dcfce7;
+    --warning:#d4880a; --warning-bg:#fdefd0;
+    --danger:#dc2626; --danger-bg:#fee2e2;
+    --neutral-bg:#e0eaee;
+    --vendedor-color:#2a9ab0; --vendedor-bg:#d0eef4;
+    --comprador-color:#c07800; --comprador-bg:#fdefd0;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
@@ -29,7 +51,7 @@
   button:hover{background:var(--panel);}
   button:active{transform:scale(.98);}
   button.primary{background:var(--accent); border-color:var(--accent); color:#fff;}
-  button.primary:hover{background:#2563eb;}
+  button.primary:hover{background:var(--accent-hover);}
   input, select, textarea{
     font-family:inherit; background:var(--panel2); border:1px solid var(--border);
     color:var(--text); border-radius:var(--radius); padding:8px 10px; font-size:13px;
@@ -61,12 +83,23 @@
   /* LAYOUT GENERAL */
   #app{display:none;}
   header{
-    border-bottom:1px solid var(--border); padding:14px 24px;
+    border-bottom:1px solid var(--border); padding:10px 24px;
     display:flex; align-items:center; justify-content:space-between;
+    background:var(--panel);
   }
-  header h1{font-size:16px; font-weight:500;}
-  header .userInfo{display:flex; align-items:center; gap:12px; font-size:13px; color:var(--text2);}
-  main{padding:24px; max-width:1100px; margin:0 auto;}
+  .headerLogo{display:flex; align-items:center; gap:10px;}
+  .headerLogo svg{width:36px; height:36px;}
+  .headerLogo .headerTitulo{display:flex; flex-direction:column;}
+  .headerLogo .headerTitulo span:first-child{font-size:15px; font-weight:700; letter-spacing:.03em; color:var(--text);}
+  .headerLogo .headerTitulo span:last-child{font-size:11px; color:var(--text2); letter-spacing:.04em; text-transform:uppercase;}
+  header .headerRight{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--text2);}
+  .temaToggle{
+    background:none; border:1px solid var(--border); border-radius:20px;
+    padding:5px 10px; font-size:16px; cursor:pointer; transition:background .15s;
+    color:var(--text); display:flex; align-items:center; gap:4px;
+  }
+  .temaToggle:hover{background:var(--panel2);}
+  main{padding:24px; max-width:1200px; margin:0 auto;}
 
   /* DASHBOARD CARDS */
   .cards{
@@ -107,6 +140,11 @@
   .badge.parcial{background:var(--accent-bg); color:var(--accent);}
   .badge.cobrado{background:var(--success-bg); color:var(--success);}
   .emptyState{text-align:center; padding:48px 0; color:var(--text2);}
+  /* Chips CV/CC en tabla */
+  .chipCV{color:var(--vendedor-color); font-size:12px;}
+  .chipCC{color:var(--comprador-color); font-size:12px;}
+  .chipCV.cobrado-chip{color:var(--success);}
+  .chipCC.cobrado-chip{color:var(--success);}
 
   /* MODAL */
   .overlay{
@@ -140,8 +178,16 @@
 <!-- ===================== LOGIN ===================== -->
 <div id="pantallaLogin">
   <div class="loginBox">
-    <h1>Comisiones de venta</h1>
-    <p class="sub">Eckerdt Negocios Inmobiliarios</p>
+    <div style="text-align:center; margin-bottom:20px;">
+      <svg viewBox="0 0 80 70" fill="none" xmlns="http://www.w3.org/2000/svg" style="width:52px; height:52px; margin-bottom:8px;">
+        <polygon points="8,62 32,22 56,62" fill="#4BBFD4"/>
+        <polygon points="28,62 52,22 76,62" fill="#2A8A96"/>
+        <ellipse cx="40" cy="11" rx="7" ry="9" fill="#F5A623"/>
+        <ellipse cx="40" cy="13" rx="3.5" ry="3.5" fill="white"/>
+      </svg>
+      <h1>ECKERDT</h1>
+      <p class="sub">Comisiones de venta</p>
+    </div>
     <div class="field">
       <label>Email</label>
       <input type="email" id="loginEmail" placeholder="gaston@ie.com" autocomplete="username">
@@ -158,8 +204,22 @@
 <!-- ===================== APP ===================== -->
 <div id="app">
   <header>
-    <h1>Comisiones de venta</h1>
-    <div class="userInfo">
+    <div class="headerLogo">
+      <!-- Logo SVG Eckerdt simplificado -->
+      <svg viewBox="0 0 80 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <polygon points="10,60 40,15 70,60" fill="none"/>
+        <polygon points="8,62 32,22 56,62" fill="#4BBFD4"/>
+        <polygon points="28,62 52,22 76,62" fill="#2A8A96"/>
+        <ellipse cx="40" cy="11" rx="7" ry="9" fill="#F5A623"/>
+        <ellipse cx="40" cy="13" rx="3.5" ry="3.5" fill="white"/>
+      </svg>
+      <div class="headerTitulo">
+        <span>ECKERDT</span>
+        <span>Comisiones de venta</span>
+      </div>
+    </div>
+    <div class="headerRight">
+      <button class="temaToggle" id="btnTema" title="Cambiar tema">🌙</button>
       <span id="userEmail"></span>
       <button id="btnLogout">Salir</button>
     </div>
@@ -194,7 +254,9 @@
           <th data-sort="propiedad">Prop</th>
           <th data-sort="vendedor">Vendedor → Comprador</th>
           <th data-sort="precioVenta" class="num">Precio</th>
-          <th data-sort="comisionTotal" class="num">Com. USD</th>
+          <th class="num" style="color:var(--vendedor-color);">Com. Vendedor</th>
+          <th class="num" style="color:var(--comprador-color);">Com. Comprador</th>
+          <th data-sort="comisionTotal" class="num">Com. Total</th>
           <th data-sort="miParte" class="num">Mi parte</th>
           <th>Estado</th>
         </tr>
@@ -360,6 +422,16 @@ let S = window.S = {
   repartoTipoActual: "50-50",
   detalleOperacionId: null
 };
+
+// ---------- TOGGLE TEMA ----------
+const btnTema = document.getElementById("btnTema");
+const temaGuardado = localStorage.getItem("tema") || "oscuro";
+if (temaGuardado === "claro") { document.body.classList.add("tema-claro"); btnTema.textContent = "☀️"; }
+btnTema.addEventListener("click", () => {
+  const esClaro = document.body.classList.toggle("tema-claro");
+  btnTema.textContent = esClaro ? "☀️" : "🌙";
+  localStorage.setItem("tema", esClaro ? "claro" : "oscuro");
+});
 
 // ---------- AUTH ----------
 document.getElementById("btnLogin").addEventListener("click", login);
@@ -569,8 +641,10 @@ function render() {
     <tr data-action="abrir-detalle" data-id="${op.id}">
       <td>${fmtFecha(op.fecha)}</td>
       <td>${op.propiedad || ""}</td>
-      <td><span style="color:var(--success);">${op.vendedor || ""}</span><span style="color:var(--text3);"> → </span><span style="color:var(--accent);">${op.comprador || ""}</span></td>
+      <td><span style="color:var(--vendedor-color);">${op.vendedor || ""}</span><span style="color:var(--text3);"> → </span><span style="color:var(--comprador-color);">${op.comprador || ""}</span></td>
       <td class="num">${Math.round(op.precioVenta || 0).toLocaleString("es-AR")}</td>
+      <td class="num"><span class="${op.cv?.cobrado ? 'chipCV cobrado-chip' : 'chipCV'}">${Math.round(comisionUSD(op,"cv")).toLocaleString("es-AR")}</span></td>
+      <td class="num"><span class="${op.cc?.cobrado ? 'chipCC cobrado-chip' : 'chipCC'}">${Math.round(comisionUSD(op,"cc")).toLocaleString("es-AR")}</span></td>
       <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
       <td class="num">${celdaMiParte(op)}</td>
       <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span></td>
