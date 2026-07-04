@@ -408,12 +408,22 @@ function comisionTotalUSD(op) {
   return comisionUSD(op, "cv") + comisionUSD(op, "cc");
 }
 function miParteUSD(op) {
-  const total = comisionTotalUSD(op);
+  // Si ya hay gastonMonto registrado en CV y/o CC, los suma directamente.
+  // Para los cobros pendientes, usa el reparto general de la operación.
+  const cv = comisionUSD(op, "cv");
+  const cc = comisionUSD(op, "cc");
   const reparto = op.reparto || { tipo: "50-50" };
-  if (reparto.tipo === "50-50") return total * 0.5;
-  if (reparto.tipo === "porcentaje") return total * ((reparto.gastonPct || 50) / 100);
-  if (reparto.tipo === "fijo") return reparto.gastonMonto || 0;
-  return total * 0.5;
+  function pctGaston() {
+    if (reparto.tipo === "50-50") return 0.5;
+    if (reparto.tipo === "porcentaje") return (reparto.gastonPct || 50) / 100;
+    return 0.5;
+  }
+  let total = 0;
+  if (op.cv?.cobrado && op.cv?.gastonMonto !== undefined) total += op.cv.gastonMonto;
+  else total += cv * pctGaston();
+  if (op.cc?.cobrado && op.cc?.gastonMonto !== undefined) total += op.cc.gastonMonto;
+  else total += cc * pctGaston();
+  return total;
 }
 function estadoOperacion(op) {
   if (op.estadoNegociacion === "negociacion") return "negociacion";
@@ -461,14 +471,21 @@ function miPartePctDe(op) {
   return miParteUSD(op) / total;
 }
 function miParteDesglose(op) {
-  // Devuelve { cobrado, pendiente } de "mi parte", según qué porción (CV/CC)
-  // ya está cobrada. Útil cuando una operación está en cobro parcial.
-  const pct = miPartePctDe(op);
+  // Devuelve { cobrado, pendiente } de "mi parte", usando gastonMonto real si está guardado.
   const cv = comisionUSD(op, "cv");
   const cc = comisionUSD(op, "cc");
+  const pct = miPartePctDe(op);
   let cobrado = 0, pendiente = 0;
-  if (op.cv?.cobrado) cobrado += cv * pct; else pendiente += cv * pct;
-  if (op.cc?.cobrado) cobrado += cc * pct; else pendiente += cc * pct;
+  if (op.cv?.cobrado) {
+    cobrado += op.cv.gastonMonto !== undefined ? op.cv.gastonMonto : cv * pct;
+  } else {
+    pendiente += cv * pct;
+  }
+  if (op.cc?.cobrado) {
+    cobrado += op.cc.gastonMonto !== undefined ? op.cc.gastonMonto : cc * pct;
+  } else {
+    pendiente += cc * pct;
+  }
   return { cobrado, pendiente };
 }
 
@@ -711,18 +728,33 @@ function renderBloqueComision(tipo, op) {
   if (datos.cobrado) {
     badge.textContent = "Cobrado";
     badge.className = "badge cobrado";
+    const gastonMonto = datos.gastonMonto ?? monto / 2;
+    const matiasMonto = monto - gastonMonto;
+    const gastonPct = monto > 0 ? Math.round(gastonMonto / monto * 100) : 50;
+    const matiasPct = 100 - gastonPct;
     cont.innerHTML = `
-      <div style="font-size:12px; color:var(--text2); line-height:1.7;">
-        Monto: ${fmtUSD(monto)}<br>
+      <div style="font-size:12px; color:var(--text2); line-height:1.8;">
+        Monto total: ${fmtUSD(monto)}<br>
         Fecha de cobro: ${fmtFecha(datos.fechaCobro) || "—"}<br>
         Moneda: ${datos.moneda === "ARS" ? "Pesos (ARS)" : "Dólares (USD)"}
-        ${datos.moneda === "ARS" ? `<br>Cotización blue usada: $${datos.cotizacionBlue || "—"}<br>Monto cobrado: $${Math.round(datos.montoARS || 0).toLocaleString("es-AR")} ARS` : ""}
+        ${datos.moneda === "ARS" ? `<br>Cotización blue: $${datos.cotizacionBlue || "—"} · Cobrado: $${Math.round(datos.montoARS || 0).toLocaleString("es-AR")} ARS` : ""}
       </div>
-      <button style="margin-top:10px; font-size:12px;" data-action="marcar-pendiente" data-tipo="${tipo}">Marcar como no cobrado</button>
+      <div style="display:flex; gap:16px; margin-top:10px; font-size:12px;">
+        <div style="flex:1; background:var(--success-bg); border-radius:var(--radius); padding:8px 12px;">
+          <div style="color:var(--text2); margin-bottom:2px;">Gastón (${gastonPct}%)</div>
+          <div style="color:var(--success); font-size:15px; font-weight:500;">${fmtUSD(gastonMonto)}</div>
+        </div>
+        <div style="flex:1; background:var(--panel2); border-radius:var(--radius); padding:8px 12px;">
+          <div style="color:var(--text2); margin-bottom:2px;">Matías (${matiasPct}%)</div>
+          <div style="color:var(--text); font-size:15px; font-weight:500;">${fmtUSD(matiasMonto)}</div>
+        </div>
+      </div>
+      <button style="margin-top:12px; font-size:12px;" data-action="marcar-pendiente" data-tipo="${tipo}">Marcar como no cobrado</button>
     `;
   } else {
     badge.textContent = "Pendiente";
     badge.className = "badge pendiente";
+    const mitad = monto / 2;
     cont.innerHTML = `
       <div style="font-size:12px; color:var(--text2); margin-bottom:10px;">Monto a cobrar: ${fmtUSD(monto)}</div>
       <div class="row">
@@ -742,13 +774,66 @@ function renderBloqueComision(tipo, op) {
         <label>Cotización blue del día (dolarhoy.com)</label>
         <input type="number" id="cobroCotizacion_${tipo}" placeholder="Ej: 1850">
       </div>
+      <div style="margin-bottom:10px;">
+        <label style="margin-bottom:6px;">Reparto de este cobro</label>
+        <div style="display:flex; gap:6px; margin-bottom:8px;">
+          <button class="repartoCobroBtn activo" data-reparto-cobro="mitad" data-tipo="${tipo}" style="flex:1; font-size:12px; padding:7px;">Mitad exacta</button>
+          <button class="repartoCobroBtn" data-reparto-cobro="fijo" data-tipo="${tipo}" style="flex:1; font-size:12px; padding:7px;">Monto fijo</button>
+        </div>
+        <div id="repartoFijoBox_${tipo}" class="hidden">
+          <div class="field">
+            <label>Mi parte en USD</label>
+            <input type="number" step="0.01" id="cobroGaston_${tipo}" placeholder="${mitad.toFixed(2)}">
+          </div>
+        </div>
+        <div id="repartoPreview_${tipo}" style="display:flex; gap:10px; font-size:12px; margin-top:4px;">
+          <div style="flex:1; background:var(--success-bg); border-radius:var(--radius); padding:6px 10px;">
+            <span style="color:var(--text2);">Gastón · </span>
+            <span id="prevGaston_${tipo}" style="color:var(--success);">${fmtUSD(mitad)} (50%)</span>
+          </div>
+          <div style="flex:1; background:var(--panel2); border-radius:var(--radius); padding:6px 10px;">
+            <span style="color:var(--text2);">Matías · </span>
+            <span id="prevMatias_${tipo}" style="color:var(--text);">${fmtUSD(mitad)} (50%)</span>
+          </div>
+        </div>
+      </div>
       <button class="primary" data-action="confirmar-cobro" data-tipo="${tipo}">Marcar como cobrado</button>
     `;
+    // Listener moneda → cotización
     const monedaSel = document.getElementById(`cobroMoneda_${tipo}`);
     monedaSel.addEventListener("change", () => {
       cont.querySelector(`.cotizacionField_${tipo}`).classList.toggle("hidden", monedaSel.value !== "ARS");
     });
+    // Listeners reparto
+    cont.querySelectorAll(".repartoCobroBtn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        cont.querySelectorAll(".repartoCobroBtn").forEach(b => {
+          b.classList.toggle("activo", b === btn);
+          b.style.borderColor = b === btn ? "var(--accent)" : "";
+          b.style.color = b === btn ? "var(--accent)" : "";
+          b.style.background = b === btn ? "var(--accent-bg)" : "";
+        });
+        const esFijo = btn.dataset.repartoCobro === "fijo";
+        document.getElementById(`repartoFijoBox_${tipo}`).classList.toggle("hidden", !esFijo);
+        if (!esFijo) actualizarPreviewReparto(tipo, monto, null);
+      });
+    });
+    // Listener monto Gastón → actualizar preview
+    cont.querySelector(`#cobroGaston_${tipo}`)?.addEventListener("input", e => {
+      actualizarPreviewReparto(tipo, monto, parseFloat(e.target.value) || 0);
+    });
   }
+}
+
+function actualizarPreviewReparto(tipo, montoTotal, gastonMonto) {
+  const g = gastonMonto !== null ? gastonMonto : montoTotal / 2;
+  const m = montoTotal - g;
+  const gPct = montoTotal > 0 ? Math.round(g / montoTotal * 100) : 50;
+  const mPct = 100 - gPct;
+  const prevG = document.getElementById(`prevGaston_${tipo}`);
+  const prevM = document.getElementById(`prevMatias_${tipo}`);
+  if (prevG) prevG.textContent = `${fmtUSD(g)} (${gPct}%)`;
+  if (prevM) prevM.textContent = `${fmtUSD(m)} (${mPct}%)`;
 }
 
 document.addEventListener("click", async e => {
@@ -760,11 +845,20 @@ document.addEventListener("click", async e => {
     const cotizacion = moneda === "ARS" ? (parseFloat(document.getElementById(`cobroCotizacion_${tipo}`).value) || 0) : null;
     const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
     const monto = comisionUSD(op, tipo);
+
+    // Calcular reparto
+    const esFijo = document.getElementById(`repartoFijoBox_${tipo}`) &&
+                   !document.getElementById(`repartoFijoBox_${tipo}`).classList.contains("hidden");
+    const gastonMonto = esFijo
+      ? (parseFloat(document.getElementById(`cobroGaston_${tipo}`)?.value) || monto / 2)
+      : monto / 2;
+
     const datosCobro = {
       ...op[tipo],
       cobrado: true,
       fechaCobro: fecha,
       moneda,
+      gastonMonto,
       ...(moneda === "ARS" ? { cotizacionBlue: cotizacion, montoARS: monto * cotizacion } : {})
     };
     await updateDoc(doc(db, COLECCION, op.id), { [tipo]: datosCobro });
