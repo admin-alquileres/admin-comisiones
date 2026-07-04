@@ -511,7 +511,7 @@ function fmtFecha(iso) {
 // ---------- RENDER DASHBOARD ----------
 function renderDashboard(lista) {
   const generado = lista.reduce((a, op) => a + comisionTotalUSD(op), 0);
-  const miParte = lista.reduce((a, op) => a + miParteUSD(op), 0);
+  const miParte = lista.reduce((a, op) => op.estadoNegociacion === "negociacion" ? a : a + miParteUSD(op), 0);
   let cobrado = 0, pendiente = 0;
   lista.forEach(op => {
     const { cobrado: c, pendiente: p } = miParteDesglose(op);
