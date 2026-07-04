@@ -90,7 +90,7 @@
   /* TABLA */
   table{width:100%; border-collapse:collapse; font-size:13px;}
   thead th{
-    text-align:left; color:var(--text2); font-weight:400; padding:8px 10px;
+    text-align:left; color:var(--text); font-weight:600; padding:8px 10px;
     border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap;
   }
   thead th:hover{color:var(--text);}
@@ -568,7 +568,7 @@ function render() {
     <tr data-action="abrir-detalle" data-id="${op.id}">
       <td>${fmtFecha(op.fecha)}</td>
       <td>${op.propiedad || ""}</td>
-      <td style="color:var(--text2);">${op.vendedor || ""} → ${op.comprador || ""}</td>
+      <td><span style="color:var(--success);">${op.vendedor || ""}</span><span style="color:var(--text3);"> → </span><span style="color:var(--accent);">${op.comprador || ""}</span></td>
       <td class="num">${Math.round(op.precioVenta || 0).toLocaleString("es-AR")}</td>
       <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
       <td class="num">${celdaMiParte(op)}</td>
