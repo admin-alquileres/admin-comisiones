@@ -633,10 +633,10 @@ function render() {
     <tr data-action="abrir-detalle" data-id="${op.id}">
       <td>${fmtFecha(op.fecha)}</td>
       <td>${op.propiedad || ""}</td>
-      <td><span style="color:${op.estadoCalc === 'negociacion' ? '#f472b6' : 'var(--vendedor-color)'};">${op.vendedor || ""}</span><span style="color:var(--text3);"> → </span><span style="color:${op.estadoCalc === 'negociacion' ? '#f472b6' : 'var(--comprador-color)'};">${op.comprador || ""}</span></td>
+      <td><span style="color:${op.estadoCalc==='negociacion'?'#f472b6':'var(--vendedor-color)'};">${op.vendedor || ""}</span><span style="color:var(--text3);"> → </span><span style="color:${op.estadoCalc==='negociacion'?'#f472b6':'var(--comprador-color)'};">${op.comprador || ""}</span></td>
       <td class="num">${Math.round(op.precioVenta || 0).toLocaleString("es-AR")}</td>
-      <td class="num"><span class="${op.cv?.cobrado ? 'chipCV cobrado-chip' : 'chipCV'}" ${op.estadoCalc === 'negociacion' ? 'style="color:#f472b6;"' : ''}>${Math.round(comisionUSD(op,"cv")).toLocaleString("es-AR")}</span></td>
-      <td class="num"><span class="${op.cc?.cobrado ? 'chipCC cobrado-chip' : 'chipCC'}" ${op.estadoCalc === 'negociacion' ? 'style="color:#f472b6;"' : ''}>${Math.round(comisionUSD(op,"cc")).toLocaleString("es-AR")}</span></td>
+      <td class="num"><span class="${op.cv?.cobrado ? 'chipCV cobrado-chip' : 'chipCV'}" style="${op.estadoCalc==='negociacion'?'color:#f472b6;':''}">${Math.round(comisionUSD(op,"cv")).toLocaleString("es-AR")}</span></td>
+      <td class="num"><span class="${op.cc?.cobrado ? 'chipCC cobrado-chip' : 'chipCC'}" style="${op.estadoCalc==='negociacion'?'color:#f472b6;':''}">${Math.round(comisionUSD(op,"cc")).toLocaleString("es-AR")}</span></td>
       <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
       <td class="num">${celdaMiParte(op)}</td>
       <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span></td>
