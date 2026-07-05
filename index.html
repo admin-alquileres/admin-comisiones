@@ -217,6 +217,7 @@
       <div class="card acc"><div class="label">Te corresponde a vos</div><div class="value" id="cardMiParte">USD 0</div></div>
       <div class="card ok"><div class="label">Cobrado</div><div class="value" id="cardCobrado">USD 0</div></div>
       <div class="card warn"><div class="label">Pendiente de cobro</div><div class="value" id="cardPendiente">USD 0</div></div>
+      <div class="card"><div class="label">Operaciones concretadas</div><div class="value" id="cardOperaciones">0</div></div>
     </div>
 
     <div class="toolbar">
@@ -522,6 +523,8 @@ function renderDashboard(lista) {
   document.getElementById("cardMiParte").textContent = fmtUSD(miParte);
   document.getElementById("cardCobrado").textContent = fmtUSD(cobrado);
   document.getElementById("cardPendiente").textContent = fmtUSD(pendiente);
+  const concretadas = lista.filter(op => op.estadoNegociacion !== "negociacion").length;
+  document.getElementById("cardOperaciones").textContent = concretadas;
 }
 function miPartePctDe(op) {
   const total = comisionTotalUSD(op);
