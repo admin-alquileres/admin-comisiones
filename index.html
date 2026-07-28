@@ -369,6 +369,7 @@
     </div>
 
     <div class="modalAcciones">
+      <button data-action="eliminar-operacion" style="color:var(--danger); border-color:var(--danger);">Eliminar operación</button>
       <button data-action="editar-operacion">Editar datos</button>
       <button data-action="cerrar-detalle">Cerrar</button>
     </div>
@@ -381,7 +382,7 @@ import {
   getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  getFirestore, collection, getDocs, addDoc, updateDoc, doc
+  getFirestore, collection, getDocs, addDoc, updateDoc, deleteDoc, doc
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const FC = {
@@ -653,6 +654,7 @@ document.addEventListener("click", e => {
   if (accion === "cerrar-modal") cerrarModalOperacion();
   if (accion === "cerrar-detalle") cerrarDetalle();
   if (accion === "editar-operacion") editarDesdeDetalle();
+  if (accion === "eliminar-operacion") eliminarOperacion();
 });
 
 // ---------- MODAL OPERACIÓN (ALTA / EDICIÓN) ----------
@@ -779,6 +781,15 @@ function abrirDetalle(id) {
 }
 function cerrarDetalle() {
   document.getElementById("overlayDetalle").classList.add("hidden");
+}
+async function eliminarOperacion() {
+  const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
+  if (!op) return;
+  const confirmar = window.confirm(`¿Eliminár "${op.vendedor} → ${op.comprador}"? Esta acción no se puede deshacer.`);
+  if (!confirmar) return;
+  await deleteDoc(doc(db, COLECCION, op.id));
+  cerrarDetalle();
+  await cargarOperaciones();
 }
 function editarDesdeDetalle() {
   const id = S.detalleOperacionId;
