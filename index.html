@@ -20,6 +20,7 @@
     --radius:8px;
     --vendedor-color:#60aaff; --vendedor-bg:#0d2040;
     --comprador-color:#ff8c00; --comprador-bg:#3a1e00;
+    --resguardo:#a78bfa; --resguardo-bg:#2a2147; --matias:#7c8da0;
   }
   /* ===== TEMA CLARO ===== */
   body.tema-claro{
@@ -34,6 +35,7 @@
     --neutral-bg:#e0eaee;
     --vendedor-color:#1a6fd4; --vendedor-bg:#dbeafe;
     --comprador-color:#ea6500; --comprador-bg:#fff0dc;
+    --resguardo:#6d28d9; --resguardo-bg:#ede9fe; --matias:#64748b;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
@@ -143,6 +145,30 @@
   .chipCC{color:var(--comprador-color); font-size:12px;}
   .chipCV.cobrado-chip{color:var(--success);}
   .chipCC.cobrado-chip{color:var(--success);}
+  .badge.sindividir{background:var(--resguardo-bg); color:var(--resguardo);}
+  .card.res .value{color:var(--resguardo);}
+  .card .sub{font-size:11px; color:var(--text3); margin-top:4px; min-height:14px;}
+  /* Cobros (entregas) y división */
+  .progBar{height:8px; border-radius:6px; background:var(--panel); overflow:hidden; margin:8px 0 4px;}
+  .progFill{height:100%; background:var(--success);}
+  .entrega{background:var(--panel); border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; margin-top:8px; font-size:12px;}
+  .entregaTop{display:flex; justify-content:space-between; align-items:center; gap:8px; color:var(--text2);}
+  .entregaTop strong{color:var(--text); font-size:13px;}
+  .miniBtn{padding:3px 9px; font-size:11px;}
+  .miniBtn.primaryMini{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .sinDividirRow{margin-top:8px; display:flex; align-items:center; justify-content:space-between; gap:8px;}
+  .splitBar{display:flex; height:8px; border-radius:6px; overflow:hidden; margin:10px 0 5px; background:var(--panel2);}
+  .splitG{background:var(--accent);}
+  .splitM{background:var(--matias);}
+  .splitLabels{display:flex; justify-content:space-between; font-size:12px;}
+  .splitLabels .g{color:var(--accent);}
+  .splitLabels .m{color:var(--text2);}
+  .opcionBtn{flex:1; font-size:12px; padding:7px;}
+  .opcionBtn.activo{border-color:var(--accent); color:var(--accent); background:var(--accent-bg);}
+  .stripResumen{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:16px;}
+  .stripResumen > div{background:var(--panel2); border-radius:var(--radius); padding:8px 10px;}
+  .stripResumen .t{font-size:11px; color:var(--text2);}
+  .stripResumen .v{font-size:15px; font-weight:600; margin-top:2px;}
 
   /* MODAL */
   .overlay{
@@ -214,9 +240,10 @@
   <main>
     <div class="cards">
       <div class="card"><div class="label">Comisiones generadas</div><div class="value" id="cardGenerado">USD 0</div></div>
-      <div class="card acc"><div class="label">Te corresponde a vos</div><div class="value" id="cardMiParte">USD 0</div></div>
-      <div class="card ok"><div class="label">Cobrado</div><div class="value" id="cardCobrado">USD 0</div></div>
-      <div class="card warn"><div class="label">Pendiente de cobro</div><div class="value" id="cardPendiente">USD 0</div></div>
+      <div class="card acc"><div class="label">Te corresponde a vos</div><div class="value" id="cardMiParte">USD 0</div><div class="sub" id="subMiParte"></div></div>
+      <div class="card ok"><div class="label">Cobrado y dividido</div><div class="value" id="cardCobrado">USD 0</div><div class="sub">Tu parte</div></div>
+      <div class="card res"><div class="label">Sin dividir (en resguardo)</div><div class="value" id="cardSinDividir">USD 0</div><div class="sub" id="subSinDividir"></div></div>
+      <div class="card warn"><div class="label">Pendiente de cobro</div><div class="value" id="cardPendiente">USD 0</div><div class="sub">Tu parte</div></div>
       <div class="card"><div class="label">Operaciones concretadas</div><div class="value" id="cardOperaciones">0</div></div>
     </div>
 
@@ -226,6 +253,7 @@
         <button class="filtroBtn" data-filtro="pendiente">Pendientes</button>
         <button class="filtroBtn" data-filtro="parcial">Cobro parcial</button>
         <button class="filtroBtn" data-filtro="cobrado">Cobradas</button>
+        <button class="filtroBtn" data-filtro="sindividir">Sin dividir</button>
         <button class="filtroBtn" data-filtro="negociacion">En negociación</button>
       </div>
       <div style="display:flex; gap:8px;">
@@ -350,7 +378,8 @@
   <div class="modal">
     <span class="closeBtn" data-action="cerrar-detalle">✕ cerrar</span>
     <h2 id="detalleTitulo">Operación</h2>
-    <div id="detalleResumen" style="font-size:13px; color:var(--text2); margin-bottom:18px;"></div>
+    <div id="detalleResumen" style="font-size:13px; color:var(--text2); margin-bottom:14px;"></div>
+    <div class="stripResumen" id="detalleStrip"></div>
 
     <div class="cobroBox">
       <div class="titulo">
@@ -467,31 +496,76 @@ function comisionUSD(op, tipo) {
 function comisionTotalUSD(op) {
   return comisionUSD(op, "cv") + comisionUSD(op, "cc");
 }
-function miParteUSD(op) {
-  // Si ya hay gastonMonto registrado en CV y/o CC, los suma directamente.
-  // Para los cobros pendientes, usa el reparto general de la operación.
-  const cv = comisionUSD(op, "cv");
-  const cc = comisionUSD(op, "cc");
-  const reparto = op.reparto || { tipo: "50-50" };
-  function pctGaston() {
-    if (reparto.tipo === "50-50") return 0.5;
-    if (reparto.tipo === "porcentaje") return (reparto.gastonPct || 50) / 100;
-    return 0.5;
-  }
-  let total = 0;
-  if (op.cv?.cobrado && op.cv?.gastonMonto !== undefined) total += op.cv.gastonMonto;
-  else total += cv * pctGaston();
-  if (op.cc?.cobrado && op.cc?.gastonMonto !== undefined) total += op.cc.gastonMonto;
-  else total += cc * pctGaston();
-  return total;
+const TOL = 0.5; // tolerancia en USD para dar una comisión por cobrada del todo
+
+function pctGastonGeneral(op) {
+  const r = op.reparto || { tipo: "50-50" };
+  if (r.tipo === "porcentaje") return (r.gastonPct || 50) / 100;
+  return 0.5;
 }
+
+// Cobros (entregas) de una comisión. Las operaciones viejas, que figuran como
+// cobradas pero no tienen lista de entregas, se leen como un único cobro ya dividido.
+function entregasDe(op, tipo) {
+  const d = op[tipo] || {};
+  if (Array.isArray(d.entregas)) return d.entregas;
+  if (d.cobrado) {
+    const monto = comisionUSD(op, tipo);
+    const e = {
+      id: "legacy", monto: monto, fecha: d.fechaCobro || "", moneda: d.moneda || "USD",
+      division: { gastonMonto: d.gastonMonto !== undefined ? d.gastonMonto : monto * pctGastonGeneral(op) }
+    };
+    if (d.moneda === "ARS") { e.cotizacionBlue = d.cotizacionBlue || 0; e.montoARS = d.montoARS || 0; }
+    return [e];
+  }
+  return [];
+}
+
+function resumenComision(op, tipo) {
+  const total = comisionUSD(op, tipo);
+  const entregas = entregasDe(op, tipo);
+  let cobrado = 0, gastonDiv = 0, matiasDiv = 0, sinDividir = 0;
+  entregas.forEach(e => {
+    cobrado += e.monto;
+    if (e.division) {
+      gastonDiv += e.division.gastonMonto;
+      matiasDiv += e.monto - e.division.gastonMonto;
+    } else {
+      sinDividir += e.monto;
+    }
+  });
+  const completa = cobrado >= total - TOL;
+  const pendiente = completa ? 0 : total - cobrado;
+  return { total, entregas, cobrado, gastonDiv, matiasDiv, sinDividir, pendiente, completa };
+}
+
+function resumenOperacion(op) {
+  const cv = resumenComision(op, "cv");
+  const cc = resumenComision(op, "cc");
+  const esNeg = op.estadoNegociacion === "negociacion";
+  const pctG = pctGastonGeneral(op);
+  if (esNeg) {
+    return { cv, cc, esNeg, cobradoMio: 0, sinDividir: 0, pendienteMio: 0, miParteEstimada: (cv.total + cc.total) * pctG, algoCobrado: false };
+  }
+  const cobradoMio = cv.gastonDiv + cc.gastonDiv;
+  const sinDividir = cv.sinDividir + cc.sinDividir;
+  const pendienteMio = (cv.pendiente + cc.pendiente) * pctG;
+  return {
+    cv, cc, esNeg, cobradoMio, sinDividir, pendienteMio,
+    miParteEstimada: cobradoMio + sinDividir * pctG + pendienteMio,
+    algoCobrado: cv.cobrado + cc.cobrado > 0
+  };
+}
+
+function miParteUSD(op) {
+  return resumenOperacion(op).miParteEstimada;
+}
+
 function estadoOperacion(op) {
   if (op.estadoNegociacion === "negociacion") return "negociacion";
-  const cvCobrado = !!op.cv?.cobrado;
-  const ccCobrado = !!op.cc?.cobrado;
-  if (cvCobrado && ccCobrado) return "cobrado";
-  if (cvCobrado || ccCobrado) return "parcial";
-  return "pendiente";
+  const r = resumenOperacion(op);
+  if (!r.algoCobrado) return "pendiente";
+  return r.cv.completa && r.cc.completa ? "cobrado" : "parcial";
 }
 function etiquetaEstado(estado) {
   return {
@@ -500,6 +574,9 @@ function etiquetaEstado(estado) {
     parcial: "Cobro parcial",
     cobrado: "Cobrado"
   }[estado] || estado;
+}
+function fmtN(n) {
+  return Math.round(n || 0).toLocaleString("es-AR");
 }
 function fmtUSD(n) {
   return "USD " + Math.round(n || 0).toLocaleString("es-AR");
@@ -512,47 +589,30 @@ function fmtFecha(iso) {
 
 // ---------- RENDER DASHBOARD ----------
 function renderDashboard(lista) {
-  const generado = lista.reduce((a, op) => op.estadoNegociacion === "negociacion" ? a : a + comisionTotalUSD(op), 0);
-  const miParte = lista.reduce((a, op) => op.estadoNegociacion === "negociacion" ? a : a + miParteUSD(op), 0);
-  let cobrado = 0, pendiente = 0;
+  let generado = 0, miParte = 0, cobrado = 0, sinDividir = 0, pendiente = 0, concretadas = 0;
   lista.forEach(op => {
-    const { cobrado: c, pendiente: p } = miParteDesglose(op);
-    cobrado += c;
-    pendiente += p;
+    if (op.estadoNegociacion === "negociacion") return;
+    const r = resumenOperacion(op);
+    concretadas++;
+    generado += r.cv.total + r.cc.total;
+    miParte += r.miParteEstimada;
+    cobrado += r.cobradoMio;
+    sinDividir += r.sinDividir;
+    pendiente += r.pendienteMio;
   });
   document.getElementById("cardGenerado").textContent = fmtUSD(generado);
   document.getElementById("cardMiParte").textContent = fmtUSD(miParte);
   document.getElementById("cardCobrado").textContent = fmtUSD(cobrado);
+  document.getElementById("cardSinDividir").textContent = fmtUSD(sinDividir);
   document.getElementById("cardPendiente").textContent = fmtUSD(pendiente);
-  const concretadas = lista.filter(op => op.estadoNegociacion !== "negociacion").length;
   document.getElementById("cardOperaciones").textContent = concretadas;
+  document.getElementById("subSinDividir").textContent = sinDividir > TOL ? "Cobrado, falta decidir el reparto" : "No hay nada sin dividir";
+  document.getElementById("subMiParte").textContent = sinDividir > TOL ? "Incluye 50% estimado de lo sin dividir" : "";
 }
-function miPartePctDe(op) {
-  const total = comisionTotalUSD(op);
-  if (!total) return 0.5;
-  return miParteUSD(op) / total;
-}
+// Tu parte de una operación: ya cobrada y dividida, sin dividir (total en resguardo) y pendiente.
 function miParteDesglose(op) {
-  // Para cada parte (CV y CC), calcula cuánto le corresponde a Gastón:
-  // - Si está cobrada: usa gastonMonto real si existe, sino 50% del monto
-  // - Si está pendiente: usa gastonMonto real si existe, sino 50% del monto
-  // - Si es negociación: no suma nada al pendiente
-  const cv = comisionUSD(op, "cv");
-  const cc = comisionUSD(op, "cc");
-  const esNeg = op.estadoNegociacion === "negociacion";
-  let cobrado = 0, pendiente = 0;
-
-  // CV
-  const cvGaston = op.cv?.gastonMonto !== undefined ? op.cv.gastonMonto : cv * 0.5;
-  if (op.cv?.cobrado) cobrado += cvGaston;
-  else if (!esNeg) pendiente += cvGaston;
-
-  // CC
-  const ccGaston = op.cc?.gastonMonto !== undefined ? op.cc.gastonMonto : cc * 0.5;
-  if (op.cc?.cobrado) cobrado += ccGaston;
-  else if (!esNeg) pendiente += ccGaston;
-
-  return { cobrado, pendiente };
+  const r = resumenOperacion(op);
+  return { cobrado: r.cobradoMio, sinDividir: r.sinDividir, pendiente: r.pendienteMio };
 }
 
 // ---------- FILTROS ----------
@@ -582,9 +642,12 @@ function listaFiltrada() {
     ...op,
     comisionTotal: comisionTotalUSD(op),
     miParte: miParteUSD(op),
-    estadoCalc: estadoOperacion(op)
+    estadoCalc: estadoOperacion(op),
+    sinDividir: resumenOperacion(op).sinDividir
   }));
-  if (S.filtroEstado !== "todas") {
+  if (S.filtroEstado === "sindividir") {
+    lista = lista.filter(op => op.sinDividir > TOL);
+  } else if (S.filtroEstado !== "todas") {
     lista = lista.filter(op => op.estadoCalc === S.filtroEstado);
   }
   if (S.busqueda) {
@@ -607,16 +670,24 @@ function listaFiltrada() {
 
 // ---------- RENDER TABLA ----------
 function celdaMiParte(op) {
-  if (op.estadoCalc !== "parcial") {
-    return Math.round(op.miParte).toLocaleString("es-AR");
-  }
-  const { cobrado, pendiente } = miParteDesglose(op);
-  return `
-    <div style="line-height:1.4;">
-      <div style="color:var(--success);">${Math.round(cobrado).toLocaleString("es-AR")} cobrado</div>
-      <div style="color:var(--warning); font-size:11px;">${Math.round(pendiente).toLocaleString("es-AR")} pendiente</div>
-    </div>
-  `;
+  if (op.estadoCalc === "negociacion") return fmtN(op.miParte);
+  const { cobrado, sinDividir, pendiente } = miParteDesglose(op);
+  const partes = [];
+  if (cobrado > TOL) partes.push('<div style="color:var(--success);">' + fmtN(cobrado) + ' cobrado</div>');
+  if (sinDividir > TOL) partes.push('<div style="color:var(--resguardo);">' + fmtN(sinDividir) + ' sin dividir</div>');
+  if (pendiente > TOL) partes.push('<div style="color:var(--warning);">' + fmtN(pendiente) + ' pendiente</div>');
+  if (partes.length === 0 || (partes.length === 1 && sinDividir <= TOL)) return fmtN(op.miParte);
+  return '<div style="line-height:1.4; font-size:12px;">' + partes.join("") + '</div>';
+}
+
+function chipComision(op, tipo) {
+  const r = resumenComision(op, tipo);
+  const base = tipo === "cv" ? "chipCV" : "chipCC";
+  const valor = fmtN(r.total);
+  if (op.estadoNegociacion === "negociacion") return '<span class="' + base + '" style="color:#f472b6;">' + valor + '</span>';
+  if (r.cobrado > TOL && r.completa) return '<span class="' + base + ' cobrado-chip">' + valor + '</span>';
+  if (r.cobrado > TOL) return '<span class="' + base + '" title="Cobrada en parte">' + valor + ' <span style="color:var(--success); font-size:10px;">&#9680;</span></span>';
+  return '<span class="' + base + '">' + valor + '</span>';
 }
 
 function render() {
@@ -636,11 +707,11 @@ function render() {
       <td>${op.propiedad || ""}</td>
       <td><span style="color:${op.estadoCalc==='negociacion'?'#f472b6':'var(--vendedor-color)'};">${op.vendedor || ""}</span><span style="color:var(--text3);"> → </span><span style="color:${op.estadoCalc==='negociacion'?'#f472b6':'var(--comprador-color)'};">${op.comprador || ""}</span></td>
       <td class="num">${Math.round(op.precioVenta || 0).toLocaleString("es-AR")}</td>
-      <td class="num"><span class="${op.cv?.cobrado ? 'chipCV cobrado-chip' : 'chipCV'}" style="${op.estadoCalc==='negociacion'?'color:#f472b6;':''}">${Math.round(comisionUSD(op,"cv")).toLocaleString("es-AR")}</span></td>
-      <td class="num"><span class="${op.cc?.cobrado ? 'chipCC cobrado-chip' : 'chipCC'}" style="${op.estadoCalc==='negociacion'?'color:#f472b6;':''}">${Math.round(comisionUSD(op,"cc")).toLocaleString("es-AR")}</span></td>
+      <td class="num">${chipComision(op, "cv")}</td>
+      <td class="num">${chipComision(op, "cc")}</td>
       <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
       <td class="num">${celdaMiParte(op)}</td>
-      <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span></td>
+      <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span>${op.sinDividir > TOL ? ' <span class="badge sindividir">Sin dividir</span>' : ''}</td>
     </tr>
   `).join("");
 }
@@ -744,8 +815,8 @@ async function guardarOperacion() {
     estadoNegociacion: document.getElementById("opEstadoNegociacion").value,
     notas: document.getElementById("opNotas").value.trim(),
     reparto,
-    cv: { porcentaje: cvPct, cobrado: existente?.cv?.cobrado || false, ...(existente?.cv?.cobrado ? existenteCobroCV(existente) : {}) },
-    cc: { porcentaje: ccPct, cobrado: existente?.cc?.cobrado || false, ...(existente?.cc?.cobrado ? existenteCobroCC(existente) : {}) }
+    cv: { porcentaje: cvPct, cobrado: existente?.cv?.cobrado || false, ...(existente?.cv?.cobrado ? existenteCobroCV(existente) : {}), ...(existente?.cv?.entregas ? { entregas: existente.cv.entregas } : {}) },
+    cc: { porcentaje: ccPct, cobrado: existente?.cc?.cobrado || false, ...(existente?.cc?.cobrado ? existenteCobroCC(existente) : {}), ...(existente?.cc?.entregas ? { entregas: existente.cc.entregas } : {}) }
   };
 
   if (S.modalOperacionId) {
@@ -768,16 +839,28 @@ function existenteCobroCC(op) {
 // ---------- MODAL DETALLE / COBRO ----------
 function abrirDetalle(id) {
   S.detalleOperacionId = id;
-  const op = S.operaciones.find(o => o.id === id);
+  S.divForm = null;
+  renderDetalle();
+  document.getElementById("overlayDetalle").classList.remove("hidden");
+}
+function renderDetalle() {
+  const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
   if (!op) return;
-  document.getElementById("detalleTitulo").textContent = `${op.propiedad} — ${op.vendedor} → ${op.comprador}`;
+  document.getElementById("detalleTitulo").textContent = op.propiedad + " — " + op.vendedor + " → " + op.comprador;
   document.getElementById("detalleResumen").textContent =
-    `${fmtFecha(op.fecha)} · Precio USD ${Math.round(op.precioVenta || 0).toLocaleString("es-AR")} · Mi parte ${fmtUSD(miParteUSD(op))}`;
-
+    fmtFecha(op.fecha) + " · Precio USD " + fmtN(op.precioVenta) + " · Tu parte estimada " + fmtUSD(miParteUSD(op));
+  const r = resumenOperacion(op);
+  const strip = document.getElementById("detalleStrip");
+  if (r.esNeg) {
+    strip.innerHTML = "";
+  } else {
+    strip.innerHTML =
+      '<div><div class="t">Cobrado y dividido (tu parte)</div><div class="v" style="color:var(--success);">' + fmtUSD(r.cobradoMio) + '</div></div>' +
+      '<div><div class="t">Sin dividir (en resguardo)</div><div class="v" style="color:var(--resguardo);">' + fmtUSD(r.sinDividir) + '</div></div>' +
+      '<div><div class="t">Pendiente de cobro (tu parte)</div><div class="v" style="color:var(--warning);">' + fmtUSD(r.pendienteMio) + '</div></div>';
+  }
   renderBloqueComision("cv", op);
   renderBloqueComision("cc", op);
-
-  document.getElementById("overlayDetalle").classList.remove("hidden");
 }
 function cerrarDetalle() {
   document.getElementById("overlayDetalle").classList.add("hidden");
@@ -797,160 +880,240 @@ function editarDesdeDetalle() {
   abrirModalOperacion(id);
 }
 
+function hoyISO() {
+  const d = new Date();
+  return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+}
+function nuevoId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+function redondear2(n) {
+  return Math.round(n * 100) / 100;
+}
+function gastonSegunModo(e, f) {
+  if (f.modo === "mitad") return e.monto / 2;
+  if (f.modo === "mio") return e.monto;
+  const v = parseFloat(f.gaston);
+  if (isNaN(v)) return 0;
+  return Math.min(Math.max(v, 0), e.monto);
+}
+function htmlSplit(monto, g) {
+  const gp = monto > 0 ? Math.round(g / monto * 100) : 50;
+  const mp = 100 - gp;
+  return '<div class="splitBar"><div class="splitG" style="width:' + gp + '%"></div><div class="splitM" style="width:' + mp + '%"></div></div>' +
+    '<div class="splitLabels"><span class="g">Gastón ' + fmtUSD(g) + ' (' + gp + '%)</span><span class="m">Matías ' + fmtUSD(monto - g) + ' (' + mp + '%)</span></div>';
+}
+function htmlFormDivision(e, f) {
+  const g = gastonSegunModo(e, f);
+  const opcion = (modo, txt) => '<button class="opcionBtn' + (f.modo === modo ? ' activo' : '') + '" data-action="modo-division" data-modo="' + modo + '">' + txt + '</button>';
+  let h = '<div style="margin-top:10px;"><label style="margin-bottom:6px;">¿Cómo se divide este cobro de ' + fmtUSD(e.monto) + '?</label>';
+  h += '<div style="display:flex; gap:6px; margin-bottom:8px;">' + opcion("mitad", "Mitad y mitad") + opcion("mio", "Todo para mí") + opcion("fijo", "Monto fijo") + '</div>';
+  if (f.modo === "fijo") {
+    h += '<div class="field"><label>Tu parte en USD (el resto es de Matías)</label><input type="number" step="0.01" id="divMonto" value="' + f.gaston + '" placeholder="' + (e.monto / 2).toFixed(2) + '"></div>';
+  }
+  h += '<div id="divPreview">' + htmlSplit(e.monto, g) + '</div>';
+  h += '<div style="display:flex; gap:8px; margin-top:10px;"><button class="primary" data-action="confirmar-division">Confirmar división</button><button data-action="cancelar-division">Cancelar</button></div></div>';
+  return h;
+}
+function htmlEntrega(tipo, e) {
+  const f = (S.divForm && S.divForm.tipo === tipo && S.divForm.id === e.id) ? S.divForm : null;
+  const pesos = e.moneda === "ARS"
+    ? " · en pesos: $" + fmtN(e.montoARS) + " (blue $" + (e.cotizacionBlue || "—") + ")"
+    : "";
+  const attrs = 'data-tipo="' + tipo + '" data-id="' + e.id + '"';
+  let h = '<div class="entrega">';
+  h += '<div class="entregaTop"><span><strong>' + fmtUSD(e.monto) + '</strong> · ' + (fmtFecha(e.fecha) || "sin fecha") + pesos + '</span>';
+  h += '<button class="miniBtn" data-action="quitar-entrega" ' + attrs + ' title="Quitar este cobro">Quitar</button></div>';
+  if (f) {
+    h += htmlFormDivision(e, f);
+  } else if (e.division) {
+    h += htmlSplit(e.monto, e.division.gastonMonto);
+    h += '<div style="margin-top:6px; display:flex; gap:6px;">' +
+      '<button class="miniBtn" data-action="abrir-division" ' + attrs + '>Cambiar reparto</button>' +
+      '<button class="miniBtn" data-action="deshacer-division" ' + attrs + '>Volver a "sin dividir"</button></div>';
+  } else {
+    h += '<div class="sinDividirRow"><span class="badge sindividir">Cobrado · sin dividir (en resguardo)</span>' +
+      '<button class="miniBtn primaryMini" data-action="abrir-division" ' + attrs + '>Dividir</button></div>';
+  }
+  return h + '</div>';
+}
+function htmlFormCobro(tipo, r) {
+  const faltan = redondear2(r.pendiente);
+  let h = '<div style="margin-top:12px; border-top:1px dashed var(--border); padding-top:12px;">';
+  h += '<label style="margin-bottom:6px;">Registrar un cobro' + (r.cobrado > TOL ? ' (otra entrega)' : '') + '</label>';
+  h += '<div class="row">' +
+    '<div class="field"><label>Monto cobrado (USD)</label><input type="number" step="0.01" id="cobroMonto_' + tipo + '" value="' + faltan + '"></div>' +
+    '<div class="field"><label>Fecha</label><input type="date" id="cobroFecha_' + tipo + '" value="' + hoyISO() + '"></div></div>';
+  h += '<div class="row">' +
+    '<div class="field"><label>Moneda en que se cobró</label><select id="cobroMoneda_' + tipo + '"><option value="USD">Dólares (USD)</option><option value="ARS">Pesos (ARS)</option></select></div>' +
+    '<div class="field"><label>Reparto</label><select id="cobroReparto_' + tipo + '"><option value="sin">Todavía sin dividir</option><option value="mitad">Mitad y mitad</option></select></div></div>';
+  h += '<div class="field hidden" id="cobroCotBox_' + tipo + '"><label>Cotización blue del día (dolarhoy.com)</label><input type="number" id="cobroCotizacion_' + tipo + '" placeholder="Ej: 1850"></div>';
+  h += '<button class="primary" data-action="registrar-cobro" data-tipo="' + tipo + '">Registrar cobro</button></div>';
+  return h;
+}
+
 function renderBloqueComision(tipo, op) {
-  const datos = op[tipo] || {};
-  const monto = comisionUSD(op, tipo);
+  const r = resumenComision(op, tipo);
   const badge = document.getElementById(tipo === "cv" ? "badgeCV" : "badgeCC");
   const cont = document.getElementById(tipo === "cv" ? "cvContenido" : "ccContenido");
 
-  if (datos.cobrado) {
-    badge.textContent = "Cobrado";
-    badge.className = "badge cobrado";
-    const gastonMonto = datos.gastonMonto ?? monto / 2;
-    const matiasMonto = monto - gastonMonto;
-    const gastonPct = monto > 0 ? Math.round(gastonMonto / monto * 100) : 50;
-    const matiasPct = 100 - gastonPct;
-    cont.innerHTML = `
-      <div style="font-size:12px; color:var(--text2); line-height:1.8;">
-        Monto total: ${fmtUSD(monto)}<br>
-        Fecha de cobro: ${fmtFecha(datos.fechaCobro) || "—"}<br>
-        Moneda: ${datos.moneda === "ARS" ? "Pesos (ARS)" : "Dólares (USD)"}
-        ${datos.moneda === "ARS" ? `<br>Cotización blue: $${datos.cotizacionBlue || "—"} · Cobrado: $${Math.round(datos.montoARS || 0).toLocaleString("es-AR")} ARS` : ""}
-      </div>
-      <div style="display:flex; gap:16px; margin-top:10px; font-size:12px;">
-        <div style="flex:1; background:var(--success-bg); border-radius:var(--radius); padding:8px 12px;">
-          <div style="color:var(--text2); margin-bottom:2px;">Gastón (${gastonPct}%)</div>
-          <div style="color:var(--success); font-size:15px; font-weight:500;">${fmtUSD(gastonMonto)}</div>
-        </div>
-        <div style="flex:1; background:var(--panel2); border-radius:var(--radius); padding:8px 12px;">
-          <div style="color:var(--text2); margin-bottom:2px;">Matías (${matiasPct}%)</div>
-          <div style="color:var(--text); font-size:15px; font-weight:500;">${fmtUSD(matiasMonto)}</div>
-        </div>
-      </div>
-      <button style="margin-top:12px; font-size:12px;" data-action="marcar-pendiente" data-tipo="${tipo}">Marcar como no cobrado</button>
-    `;
-  } else {
+  if (r.cobrado <= TOL) {
     badge.textContent = "Pendiente";
     badge.className = "badge pendiente";
-    const mitad = monto / 2;
-    cont.innerHTML = `
-      <div style="font-size:12px; color:var(--text2); margin-bottom:10px;">Monto a cobrar: ${fmtUSD(monto)}</div>
-      <div class="row">
-        <div class="field">
-          <label>Fecha de cobro</label>
-          <input type="date" id="cobroFecha_${tipo}">
-        </div>
-        <div class="field">
-          <label>Moneda</label>
-          <select id="cobroMoneda_${tipo}">
-            <option value="USD">Dólares (USD)</option>
-            <option value="ARS">Pesos (ARS)</option>
-          </select>
-        </div>
-      </div>
-      <div class="field cotizacionField_${tipo} hidden">
-        <label>Cotización blue del día (dolarhoy.com)</label>
-        <input type="number" id="cobroCotizacion_${tipo}" placeholder="Ej: 1850">
-      </div>
-      <div style="margin-bottom:10px;">
-        <label style="margin-bottom:6px;">Reparto de este cobro</label>
-        <div style="display:flex; gap:6px; margin-bottom:8px;">
-          <button class="repartoCobroBtn activo" data-reparto-cobro="mitad" data-tipo="${tipo}" style="flex:1; font-size:12px; padding:7px;">Mitad exacta</button>
-          <button class="repartoCobroBtn" data-reparto-cobro="fijo" data-tipo="${tipo}" style="flex:1; font-size:12px; padding:7px;">Monto fijo</button>
-        </div>
-        <div id="repartoFijoBox_${tipo}" class="hidden">
-          <div class="field">
-            <label>Mi parte en USD</label>
-            <input type="number" step="0.01" id="cobroGaston_${tipo}" placeholder="${mitad.toFixed(2)}">
-          </div>
-        </div>
-        <div id="repartoPreview_${tipo}" style="display:flex; gap:10px; font-size:12px; margin-top:4px;">
-          <div style="flex:1; background:var(--success-bg); border-radius:var(--radius); padding:6px 10px;">
-            <span style="color:var(--text2);">Gastón · </span>
-            <span id="prevGaston_${tipo}" style="color:var(--success);">${fmtUSD(mitad)} (50%)</span>
-          </div>
-          <div style="flex:1; background:var(--panel2); border-radius:var(--radius); padding:6px 10px;">
-            <span style="color:var(--text2);">Matías · </span>
-            <span id="prevMatias_${tipo}" style="color:var(--text);">${fmtUSD(mitad)} (50%)</span>
-          </div>
-        </div>
-      </div>
-      <button class="primary" data-action="confirmar-cobro" data-tipo="${tipo}">Marcar como cobrado</button>
-    `;
-    // Listener moneda → cotización
-    const monedaSel = document.getElementById(`cobroMoneda_${tipo}`);
-    monedaSel.addEventListener("change", () => {
-      cont.querySelector(`.cotizacionField_${tipo}`).classList.toggle("hidden", monedaSel.value !== "ARS");
-    });
-    // Listeners reparto
-    cont.querySelectorAll(".repartoCobroBtn").forEach(btn => {
-      btn.addEventListener("click", () => {
-        cont.querySelectorAll(".repartoCobroBtn").forEach(b => {
-          b.classList.toggle("activo", b === btn);
-          b.style.borderColor = b === btn ? "var(--accent)" : "";
-          b.style.color = b === btn ? "var(--accent)" : "";
-          b.style.background = b === btn ? "var(--accent-bg)" : "";
-        });
-        const esFijo = btn.dataset.repartoCobro === "fijo";
-        document.getElementById(`repartoFijoBox_${tipo}`).classList.toggle("hidden", !esFijo);
-        if (!esFijo) actualizarPreviewReparto(tipo, monto, null);
-      });
-    });
-    // Listener monto Gastón → actualizar preview
-    cont.querySelector(`#cobroGaston_${tipo}`)?.addEventListener("input", e => {
-      actualizarPreviewReparto(tipo, monto, parseFloat(e.target.value) || 0);
-    });
+  } else if (r.completa) {
+    const sin = r.sinDividir > TOL;
+    badge.textContent = sin ? "Cobrado · sin dividir" : "Cobrado";
+    badge.className = sin ? "badge sindividir" : "badge cobrado";
+  } else {
+    badge.textContent = "Cobro parcial";
+    badge.className = "badge parcial";
   }
+
+  const pct = r.total > 0 ? Math.min(100, r.cobrado / r.total * 100) : 0;
+  let h = '<div style="font-size:12px; color:var(--text2);">Monto de la comisión: <strong style="color:var(--text);">' + fmtUSD(r.total) + '</strong>';
+  if (r.cobrado > TOL) h += ' · Cobrado <strong style="color:var(--success);">' + fmtUSD(r.cobrado) + '</strong>';
+  if (r.pendiente > TOL) h += ' · Faltan <strong style="color:var(--warning);">' + fmtUSD(r.pendiente) + '</strong>';
+  h += '</div>';
+  if (r.cobrado > TOL) h += '<div class="progBar"><div class="progFill" style="width:' + pct + '%;"></div></div>';
+  h += r.entregas.map(e => htmlEntrega(tipo, e)).join("");
+  if (!r.completa) h += htmlFormCobro(tipo, r);
+  cont.innerHTML = h;
 }
 
-function actualizarPreviewReparto(tipo, montoTotal, gastonMonto) {
-  const g = gastonMonto !== null ? gastonMonto : montoTotal / 2;
-  const m = montoTotal - g;
-  const gPct = montoTotal > 0 ? Math.round(g / montoTotal * 100) : 50;
-  const mPct = 100 - gPct;
-  const prevG = document.getElementById(`prevGaston_${tipo}`);
-  const prevM = document.getElementById(`prevMatias_${tipo}`);
-  if (prevG) prevG.textContent = `${fmtUSD(g)} (${gPct}%)`;
-  if (prevM) prevM.textContent = `${fmtUSD(m)} (${mPct}%)`;
+function opActual() {
+  return S.operaciones.find(o => o.id === S.detalleOperacionId);
 }
 
-document.addEventListener("click", async e => {
-  const btn = e.target.closest("[data-action='confirmar-cobro']");
-  if (btn) {
-    const tipo = btn.dataset.tipo;
-    const fecha = document.getElementById(`cobroFecha_${tipo}`).value;
-    const moneda = document.getElementById(`cobroMoneda_${tipo}`).value;
-    const cotizacion = moneda === "ARS" ? (parseFloat(document.getElementById(`cobroCotizacion_${tipo}`).value) || 0) : null;
-    const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
-    const monto = comisionUSD(op, tipo);
+// Guarda la lista de cobros de una comisión (CV o CC) y refresca todo.
+async function guardarEntregas(tipo, entregas) {
+  const op = opActual();
+  if (!op) return;
+  const total = comisionUSD(op, tipo);
+  const cobrado = entregas.reduce((a, e) => a + e.monto, 0);
+  const completa = cobrado > 0 && cobrado >= total - TOL;
+  const datos = { porcentaje: op[tipo].porcentaje, entregas: entregas, cobrado: completa };
+  const fechas = entregas.map(e => e.fecha).filter(Boolean).sort();
+  if (completa && fechas.length) datos.fechaCobro = fechas[fechas.length - 1];
+  await updateDoc(doc(db, COLECCION, op.id), { [tipo]: datos });
+  S.divForm = null;
+  await cargarOperaciones();
+  renderDetalle();
+}
 
-    // Calcular reparto
-    const esFijo = document.getElementById(`repartoFijoBox_${tipo}`) &&
-                   !document.getElementById(`repartoFijoBox_${tipo}`).classList.contains("hidden");
-    const gastonMonto = esFijo
-      ? (parseFloat(document.getElementById(`cobroGaston_${tipo}`)?.value) || monto / 2)
-      : monto / 2;
+const ACCIONES_COBRO = ["registrar-cobro", "quitar-entrega", "abrir-division", "modo-division", "cancelar-division", "confirmar-division", "deshacer-division"];
 
-    const datosCobro = {
-      ...op[tipo],
-      cobrado: true,
-      fechaCobro: fecha,
-      moneda,
-      gastonMonto,
-      ...(moneda === "ARS" ? { cotizacionBlue: cotizacion, montoARS: monto * cotizacion } : {})
-    };
-    await updateDoc(doc(db, COLECCION, op.id), { [tipo]: datosCobro });
-    await cargarOperaciones();
-    abrirDetalle(op.id);
+document.addEventListener("click", async ev => {
+  const el = ev.target.closest("[data-action]");
+  if (!el) return;
+  const accion = el.dataset.action;
+  if (ACCIONES_COBRO.indexOf(accion) === -1) return;
+  const op = opActual();
+  if (!op) return;
+  const tipo = el.dataset.tipo;
+
+  if (accion === "registrar-cobro") {
+    const monto = parseFloat(document.getElementById("cobroMonto_" + tipo).value);
+    if (!(monto > 0)) { alert("Ingresá un monto cobrado mayor a cero."); return; }
+    const fecha = document.getElementById("cobroFecha_" + tipo).value;
+    const moneda = document.getElementById("cobroMoneda_" + tipo).value;
+    const reparto = document.getElementById("cobroReparto_" + tipo).value;
+    const nueva = { id: nuevoId(), monto: redondear2(monto), fecha: fecha, moneda: moneda };
+    if (moneda === "ARS") {
+      const cot = parseFloat(document.getElementById("cobroCotizacion_" + tipo).value);
+      if (!(cot > 0)) { alert("Ingresá la cotización blue del día."); return; }
+      nueva.cotizacionBlue = cot;
+      nueva.montoARS = Math.round(nueva.monto * cot);
+    }
+    if (reparto === "mitad") nueva.division = { gastonMonto: redondear2(nueva.monto / 2) };
+    const r = resumenComision(op, tipo);
+    if (r.cobrado + nueva.monto > r.total + TOL) {
+      if (!window.confirm("Con este cobro se supera el monto de la comisión (" + fmtUSD(r.total) + "). ¿Registrarlo igual?")) return;
+    }
+    el.disabled = true;
+    await guardarEntregas(tipo, [...r.entregas, nueva]);
+    return;
   }
-  const btnNo = e.target.closest("[data-action='marcar-pendiente']");
-  if (btnNo) {
-    const tipo = btnNo.dataset.tipo;
-    const op = S.operaciones.find(o => o.id === S.detalleOperacionId);
-    await updateDoc(doc(db, COLECCION, op.id), { [tipo]: { porcentaje: op[tipo].porcentaje, cobrado: false } });
-    await cargarOperaciones();
-    abrirDetalle(op.id);
+
+  if (accion === "quitar-entrega") {
+    if (!window.confirm("¿Quitar este cobro? Ese monto vuelve a figurar como pendiente.")) return;
+    const r = resumenComision(op, tipo);
+    await guardarEntregas(tipo, r.entregas.filter(e => e.id !== el.dataset.id));
+    return;
   }
+
+  if (accion === "abrir-division") {
+    const e = resumenComision(op, tipo).entregas.find(x => x.id === el.dataset.id);
+    if (!e) return;
+    let modo = "mitad", gaston = "";
+    if (e.division) {
+      const g = e.division.gastonMonto;
+      if (Math.abs(g - e.monto / 2) < 0.01) modo = "mitad";
+      else if (Math.abs(g - e.monto) < 0.01) modo = "mio";
+      else { modo = "fijo"; gaston = String(g); }
+    }
+    S.divForm = { tipo: tipo, id: e.id, modo: modo, gaston: gaston };
+    renderDetalle();
+    return;
+  }
+
+  if (accion === "modo-division") {
+    if (S.divForm) { S.divForm.modo = el.dataset.modo; renderDetalle(); }
+    return;
+  }
+
+  if (accion === "cancelar-division") {
+    S.divForm = null;
+    renderDetalle();
+    return;
+  }
+
+  if (accion === "confirmar-division") {
+    const f = S.divForm;
+    if (!f) return;
+    const entregas = resumenComision(op, f.tipo).entregas;
+    const e = entregas.find(x => x.id === f.id);
+    if (!e) return;
+    const inp = document.getElementById("divMonto");
+    if (inp) f.gaston = inp.value;
+    if (f.modo === "fijo") {
+      const v = parseFloat(f.gaston);
+      if (isNaN(v) || v < 0 || v > e.monto + 0.01) { alert("Ingresá tu parte, entre 0 y " + fmtUSD(e.monto) + "."); return; }
+    }
+    const g = redondear2(gastonSegunModo(e, f));
+    el.disabled = true;
+    await guardarEntregas(f.tipo, entregas.map(x => x.id === f.id ? { ...x, division: { gastonMonto: g } } : x));
+    return;
+  }
+
+  if (accion === "deshacer-division") {
+    if (!window.confirm('¿Volver este cobro a "sin dividir"?')) return;
+    const entregas = resumenComision(op, tipo).entregas.map(x => {
+      if (x.id !== el.dataset.id) return x;
+      const { division, ...resto } = x;
+      return resto;
+    });
+    await guardarEntregas(tipo, entregas);
+    return;
+  }
+});
+
+// Vista previa en vivo del reparto con monto fijo
+document.addEventListener("input", ev => {
+  if (ev.target.id !== "divMonto" || !S.divForm) return;
+  S.divForm.gaston = ev.target.value;
+  const op = opActual();
+  if (!op) return;
+  const e = resumenComision(op, S.divForm.tipo).entregas.find(x => x.id === S.divForm.id);
+  if (!e) return;
+  document.getElementById("divPreview").innerHTML = htmlSplit(e.monto, gastonSegunModo(e, S.divForm));
+});
+
+// La cotización blue solo aparece si se cobró en pesos
+document.addEventListener("change", ev => {
+  const id = ev.target.id || "";
+  if (id.indexOf("cobroMoneda_") !== 0) return;
+  const box = document.getElementById("cobroCotBox_" + id.slice("cobroMoneda_".length));
+  if (box) box.classList.toggle("hidden", ev.target.value !== "ARS");
 });
 </script>
 </body>
