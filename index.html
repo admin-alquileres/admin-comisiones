@@ -146,6 +146,9 @@
   .chipCV.cobrado-chip{color:var(--success);}
   .chipCC.cobrado-chip{color:var(--success);}
   .badge.sindividir{background:var(--resguardo-bg); color:var(--resguardo);}
+  .estadoSelect{width:auto; padding:3px 6px; font-size:11px; border-radius:var(--radius); cursor:pointer; border:1px solid transparent;}
+  .estadoSelect.cobrado{background:var(--success-bg); color:var(--success);}
+  .estadoSelect.sindividir{background:var(--resguardo-bg); color:var(--resguardo);}
   .card.res .value{color:var(--resguardo);}
   .card .sub{font-size:11px; color:var(--text3); margin-top:4px; min-height:14px;}
   /* Cobros (entregas) y división */
@@ -253,7 +256,7 @@
         <button class="filtroBtn" data-filtro="pendiente">Pendientes</button>
         <button class="filtroBtn" data-filtro="parcial">Cobro parcial</button>
         <button class="filtroBtn" data-filtro="cobrado">Cobradas</button>
-        <button class="filtroBtn" data-filtro="sindividir">Sin dividir</button>
+        <button class="filtroBtn" data-filtro="sindividir">Pendientes de dividir</button>
         <button class="filtroBtn" data-filtro="negociacion">En negociación</button>
       </div>
       <div style="display:flex; gap:8px;">
@@ -565,14 +568,16 @@ function estadoOperacion(op) {
   if (op.estadoNegociacion === "negociacion") return "negociacion";
   const r = resumenOperacion(op);
   if (!r.algoCobrado) return "pendiente";
-  return r.cv.completa && r.cc.completa ? "cobrado" : "parcial";
+  if (!(r.cv.completa && r.cc.completa)) return "parcial";
+  return r.sinDividir > TOL ? "sindividir" : "cobrado";
 }
 function etiquetaEstado(estado) {
   return {
     negociacion: "En negociación",
     pendiente: "Pendiente",
     parcial: "Cobro parcial",
-    cobrado: "Cobrado"
+    cobrado: "Cobrado",
+    sindividir: "Pendiente de dividir"
   }[estado] || estado;
 }
 function fmtN(n) {
@@ -647,6 +652,8 @@ function listaFiltrada() {
   }));
   if (S.filtroEstado === "sindividir") {
     lista = lista.filter(op => op.sinDividir > TOL);
+  } else if (S.filtroEstado === "cobrado") {
+    lista = lista.filter(op => op.estadoCalc === "cobrado" || op.estadoCalc === "sindividir");
   } else if (S.filtroEstado !== "todas") {
     lista = lista.filter(op => op.estadoCalc === S.filtroEstado);
   }
@@ -690,6 +697,17 @@ function chipComision(op, tipo) {
   return '<span class="' + base + '">' + valor + '</span>';
 }
 
+function celdaEstado(op) {
+  if (op.estadoCalc === "cobrado" || op.estadoCalc === "sindividir") {
+    const es = op.estadoCalc;
+    return '<select class="estadoSelect ' + es + '" data-action="cambiar-division" data-id="' + op.id + '" title="Elegí si ya está dividido con Matías">' +
+      '<option value="dividido"' + (es === "cobrado" ? " selected" : "") + '>Cobrado y dividido</option>' +
+      '<option value="sindividir"' + (es === "sindividir" ? " selected" : "") + '>Pendiente de dividir</option></select>';
+  }
+  const extra = op.sinDividir > TOL ? ' <span class="badge sindividir">Sin dividir</span>' : "";
+  return '<span class="badge ' + op.estadoCalc + '">' + etiquetaEstado(op.estadoCalc) + '</span>' + extra;
+}
+
 function render() {
   const lista = listaFiltrada();
   renderDashboard(S.operaciones);
@@ -711,7 +729,7 @@ function render() {
       <td class="num">${chipComision(op, "cc")}</td>
       <td class="num">${Math.round(op.comisionTotal).toLocaleString("es-AR")}</td>
       <td class="num">${celdaMiParte(op)}</td>
-      <td><span class="badge ${op.estadoCalc}">${etiquetaEstado(op.estadoCalc)}</span>${op.sinDividir > TOL ? ' <span class="badge sindividir">Sin dividir</span>' : ''}</td>
+      <td>${celdaEstado(op)}</td>
     </tr>
   `).join("");
 }
@@ -985,20 +1003,67 @@ function opActual() {
 }
 
 // Guarda la lista de cobros de una comisión (CV o CC) y refresca todo.
-async function guardarEntregas(tipo, entregas) {
-  const op = opActual();
-  if (!op) return;
+function armarDatosComision(op, tipo, entregas) {
   const total = comisionUSD(op, tipo);
   const cobrado = entregas.reduce((a, e) => a + e.monto, 0);
   const completa = cobrado > 0 && cobrado >= total - TOL;
   const datos = { porcentaje: op[tipo].porcentaje, entregas: entregas, cobrado: completa };
   const fechas = entregas.map(e => e.fecha).filter(Boolean).sort();
   if (completa && fechas.length) datos.fechaCobro = fechas[fechas.length - 1];
-  await updateDoc(doc(db, COLECCION, op.id), { [tipo]: datos });
+  return datos;
+}
+
+async function guardarEntregas(tipo, entregas) {
+  const op = opActual();
+  if (!op) return;
+  await updateDoc(doc(db, COLECCION, op.id), { [tipo]: armarDatosComision(op, tipo, entregas) });
   S.divForm = null;
   await cargarOperaciones();
   renderDetalle();
 }
+
+// Cambia la división de todos los cobros de una operación (CV y CC):
+// "sin" los pasa a pendiente de dividir, "mitad" divide mitad y mitad lo que está sin dividir.
+async function aplicarDivisionOperacion(op, modo) {
+  const upd = {};
+  ["cv", "cc"].forEach(tipo => {
+    const r = resumenComision(op, tipo);
+    if (r.entregas.length === 0) return;
+    const entregas = r.entregas.map(e => {
+      if (modo === "sin") {
+        const { division, ...resto } = e;
+        return resto;
+      }
+      if (e.division) return e;
+      return { ...e, division: { gastonMonto: redondear2(e.monto / 2) } };
+    });
+    upd[tipo] = armarDatosComision(op, tipo, entregas);
+  });
+  if (Object.keys(upd).length === 0) return;
+  await updateDoc(doc(db, COLECCION, op.id), upd);
+  S.divForm = null;
+  await cargarOperaciones();
+  if (S.detalleOperacionId === op.id && !document.getElementById("overlayDetalle").classList.contains("hidden")) renderDetalle();
+}
+
+// Selector de estado en la tabla: elegís vos si una operación cobrada ya está dividida o no
+document.addEventListener("change", async ev => {
+  const t = ev.target;
+  if (!t.dataset || t.dataset.action !== "cambiar-division") return;
+  const op = S.operaciones.find(o => o.id === t.dataset.id);
+  if (!op) return;
+  if (t.value === "sindividir") {
+    const teniaReparto = ["cv", "cc"].some(tipo => resumenComision(op, tipo).entregas.some(e => e.division));
+    const msg = teniaReparto
+      ? "Esta operación pasa a «pendiente de dividir» y se pierde el reparto que tenía cargado. ¿Seguro?"
+      : "Esta operación pasa a «pendiente de dividir». ¿Seguro?";
+    if (!window.confirm(msg)) { render(); return; }
+    await aplicarDivisionOperacion(op, "sin");
+  } else {
+    if (!window.confirm("Se divide mitad y mitad lo que esté sin dividir. Si el reparto fue distinto, después lo cambiás desde la operación. ¿Seguro?")) { render(); return; }
+    await aplicarDivisionOperacion(op, "mitad");
+  }
+});
 
 const ACCIONES_COBRO = ["registrar-cobro", "quitar-entrega", "abrir-division", "modo-division", "cancelar-division", "confirmar-division", "deshacer-division"];
 
